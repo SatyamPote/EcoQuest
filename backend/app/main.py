@@ -28,10 +28,15 @@ with Session(engine) as db_session:
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# --- Pydantic Models for API data validation (updated) ---
+# --- Pydantic Models for API data validation ---
 class TeacherCreate(BaseModel): email: EmailStr; password: str; full_name: str
 class TeacherLogin(BaseModel): email: EmailStr; password: str
-class StudentCreate(BaseModel): student_id_card: str; full_name: str; class_name: str
+
+class StudentCreate(BaseModel):
+    student_id_card: str
+    full_name: str
+    class_name: str
+
 class StudentLogin(BaseModel): student_id_card: str
 
 class BadgeResponse(BaseModel):
@@ -65,7 +70,7 @@ class EcoTaskResponse(BaseModel):
     class Config: orm_mode = True
 
 class QuizSubmission(BaseModel):
-    answers: Dict[str, str] # { question_id: "A" }
+    answers: Dict[str, str]
 
 class SubmissionForTeacherResponse(BaseModel):
     id: uuid.UUID
@@ -74,7 +79,7 @@ class SubmissionForTeacherResponse(BaseModel):
     submission_data: str
     class Config: orm_mode = True
 
-# --- THIS IS THE MISSING REGISTRATION ROUTE ---
+# --- Teacher Registration Route ---
 @app.post("/api/teacher/register", status_code=status.HTTP_201_CREATED)
 def register_teacher(teacher: TeacherCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_email(db, email=teacher.email)
@@ -82,11 +87,9 @@ def register_teacher(teacher: TeacherCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed_password = pwd_context.hash(teacher.password)
     new_teacher = crud.create_teacher(db=db, email=teacher.email, password_hash=hashed_password, full_name=teacher.full_name)
-    # For simplicity, we can return a success message or the basic teacher info
     return {"message": "Teacher registered successfully", "teacher_id": new_teacher.id, "email": new_teacher.email}
 
-
-# --- Authentication Routes (from before) ---
+# --- Authentication and Student Management Routes ---
 @app.post("/api/teacher/login")
 def login_teacher(form_data: TeacherLogin, db: Session = Depends(get_db)):
     user = crud.get_user_by_email(db, email=form_data.email)
@@ -103,11 +106,20 @@ def login_student(form_data: StudentLogin, db: Session = Depends(get_db)):
     
 @app.post("/api/teacher/{teacher_id}/add-student")
 def add_student_by_teacher(teacher_id: uuid.UUID, student: StudentCreate, db: Session = Depends(get_db)):
-    new_student = crud.create_student(db=db, student_id_card=student.student_id_card, full_name=student.full_name, class_name=student.class_name, teacher_id=teacher_id)
+    db_student = crud.get_student_by_id_card(db, student_id_card=student.student_id_card)
+    if db_student:
+        raise HTTPException(status_code=400, detail="A student with this ID card is already registered.")
+
+    new_student = crud.create_student(
+        db=db,
+        student_id_card=student.student_id_card,
+        full_name=student.full_name,
+        class_name=student.class_name,
+        teacher_id=teacher_id
+    )
     return new_student
 
-# --- New Feature Routes ---
-
+# --- Feature Routes ---
 @app.get("/api/student/{student_id}/profile", response_model=StudentProfileResponse)
 def get_student_profile(student_id: uuid.UUID, db: Session = Depends(get_db)):
     student = crud.get_student_by_id(db, student_id=student_id)
@@ -148,7 +160,6 @@ def submit_quiz_task(student_id: uuid.UUID, task_id: uuid.UUID, submission: Quiz
     crud.create_submission(db, student_id, task_id, f"Score: {score}/{total_questions}", status)
     db.commit()
     return {"message": f"Quiz submitted! You scored {score}/{total_questions}.", "status": status}
-
 
 @app.get("/api/teacher/{teacher_id}/submissions", response_model=List[SubmissionForTeacherResponse])
 def get_pending_submissions(teacher_id: uuid.UUID, db: Session = Depends(get_db)):
