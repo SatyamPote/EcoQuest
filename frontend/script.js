@@ -1,15 +1,14 @@
 // --- CONFIGURATION ---
-const API_BASE_URL = 'https://eco-quest-theta.vercel.app';
+const API_BASE_URL = 'http://127.0.0.1:8000';
 let qrScanner;
 
 // --- SESSION MANAGEMENT ---
-// We use localStorage to keep the user logged in across pages
 const session = {
     saveUser: (user) => localStorage.setItem('ecoquest_user', JSON.stringify(user)),
     getUser: () => JSON.parse(localStorage.getItem('ecoquest_user')),
     logout: () => {
         localStorage.removeItem('ecoquest_user');
-        window.location.href = 'index.html';
+        window.location.href = '/index.html';
     }
 };
 
@@ -27,12 +26,11 @@ const api = {
                 const errorData = await response.json();
                 throw new Error(errorData.detail || 'An API error occurred');
             }
-            // Handle cases where the response might be empty (e.g., 204 No Content)
             const contentType = response.headers.get("content-type");
             if (contentType && contentType.indexOf("application/json") !== -1) {
                 return response.json();
             }
-            return; // Return nothing for non-json responses
+            return;
         } catch (error) {
             console.error('API Request Error:', error);
             throw error;
@@ -51,29 +49,23 @@ const api = {
     getLeaderboard: () => api.request('/api/leaderboard'),
 };
 
-
 // --- PAGE-SPECIFIC INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
     const pagePath = window.location.pathname;
 
-    if (pagePath.includes('teacher_login.html')) {
-        initTeacherLoginPage();
-    } else if (pagePath.includes('student_login.html')) {
-        initStudentLoginPage();
-    } else if (pagePath.includes('teacher_dashboard.html')) {
-        initTeacherDashboardPage();
-    } else if (pagePath.includes('add_student.html')) {
-        initAddStudentPage();
-    } else if (pagePath.includes('student_dashboard.html')) {
-        initStudentDashboardPage();
-    }
+    if (pagePath.includes('teacher_login.html')) initTeacherLoginPage();
+    else if (pagePath.includes('student_login.html')) initStudentLoginPage();
+    else if (pagePath.includes('teacher_dashboard.html')) initTeacherDashboardPage();
+    else if (pagePath.includes('add_student.html')) initAddStudentPage();
+    else if (pagePath.includes('student_dashboard.html')) initStudentDashboardPage();
+    else if (pagePath.includes('task_detail.html')) initTaskDetailPage();
+    else if (pagePath.includes('quiz.html')) initQuizPage();
 
-    // Universal logout button handler
     const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) {
-        logoutBtn.onclick = () => session.logout();
-    }
+    if (logoutBtn) logoutBtn.onclick = () => session.logout();
 });
+
+// --- INITIALIZATION FUNCTIONS FOR EACH PAGE ---
 
 function initTeacherLoginPage() {
     const form = document.getElementById('teacher-login-form');
@@ -84,7 +76,7 @@ function initTeacherLoginPage() {
         try {
             const data = await api.loginTeacher(email, password);
             session.saveUser({ type: 'teacher', ...data });
-            window.location.href = 'teacher_dashboard.html';
+            window.location.href = '/teacher_dashboard.html';
         } catch (error) {
             document.getElementById('login-error').textContent = error.message;
         }
@@ -97,19 +89,21 @@ function initStudentLoginPage() {
             stopQrScanner();
             const data = await api.loginStudent(decodedText);
             session.saveUser({ type: 'student', ...data });
-            window.location.href = 'student_dashboard.html';
+            window.location.href = '/student_dashboard.html';
         } catch (error) {
             document.getElementById('login-error').textContent = error.message;
+            // Briefly show error then restart scanner
+            setTimeout(() => {
+                if(document.getElementById('login-error')) document.getElementById('login-error').textContent = '';
+                startQrScanner('qr-reader',_=>_); // dummy callback
+            }, 3000);
         }
     });
 }
 
 async function initTeacherDashboardPage() {
     const user = session.getUser();
-    if (!user || user.type !== 'teacher') {
-        window.location.href = 'teacher_login.html';
-        return;
-    }
+    if (!user || user.type !== 'teacher') return window.location.href = '/teacher_login.html';
 
     document.getElementById('teacher-name').textContent = user.full_name;
     const container = document.getElementById('submissions-container');
@@ -120,23 +114,12 @@ async function initTeacherDashboardPage() {
             container.innerHTML = '<p>No pending submissions. Great job!</p>';
             return;
         }
-        const tableHTML = `
-            <table class="list-table">
-                <thead><tr><th>Student</th><th>Task</th><th>Actions</th></tr></thead>
-                <tbody>
-                    ${submissions.map(s => `
-                        <tr>
-                            <td>${s.student_name}</td>
-                            <td>${s.task_title}</td>
-                            <td class="submission-actions">
-                                <button class="btn btn-green" onclick="approveSubmission('${s.id}')">Approve</button>
-                                <button class="btn btn-red" onclick="rejectSubmission('${s.id}')">Reject</button>
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
+        const tableHTML = `<table class="list-table"><thead><tr><th>Student</th><th>Task</th><th>Actions</th></tr></thead><tbody>
+            ${submissions.map(s => `<tr><td>${s.student_name}</td><td>${s.task_title}</td><td class="submission-actions">
+            <button class="btn btn-green" onclick="approveSubmission('${s.id}')">Approve</button>
+            <button class="btn btn-red" onclick="rejectSubmission('${s.id}')">Reject</button>
+            </td></tr>`).join('')}
+        </tbody></table>`;
         container.innerHTML = tableHTML;
     } catch (error) {
         container.innerHTML = `<p class="error-message">Could not load submissions: ${error.message}</p>`;
@@ -145,10 +128,7 @@ async function initTeacherDashboardPage() {
 
 function initAddStudentPage() {
     const user = session.getUser();
-    if (!user || user.type !== 'teacher') {
-        window.location.href = 'teacher_login.html';
-        return;
-    }
+    if (!user || user.type !== 'teacher') return window.location.href = '/teacher_login.html';
 
     startQrScanner('qr-reader', (decodedText) => {
         stopQrScanner();
@@ -165,16 +145,12 @@ function initAddStudentPage() {
         const studentIdCard = document.getElementById('scanned-student-id').value;
         const fullName = document.getElementById('new-student-name').value;
         const className = document.getElementById('new-student-class').value;
-
-        if (!studentIdCard) {
-            alert('Please scan the student ID card first.');
-            return;
-        }
+        if (!studentIdCard) return alert('Please scan the student ID card first.');
 
         try {
             await api.addStudent(user.teacher_id, fullName, className, studentIdCard);
             alert(`Student "${fullName}" has been successfully added!`);
-            window.location.href = 'teacher_dashboard.html';
+            window.location.href = '/teacher_dashboard.html';
         } catch (error) {
             alert(`Error: ${error.message}`);
         }
@@ -183,10 +159,7 @@ function initAddStudentPage() {
 
 async function initStudentDashboardPage() {
     const user = session.getUser();
-    if (!user || user.type !== 'student') {
-        window.location.href = 'student_login.html';
-        return;
-    }
+    if (!user || user.type !== 'student') return window.location.href = '/student_login.html';
 
     const container = document.getElementById('dashboard-content');
     try {
@@ -203,46 +176,108 @@ async function initStudentDashboardPage() {
         const pet = getPet(profile.points);
         const badgesHTML = profile.badges.map(b => `<span class="badge" title="${b.name}: ${b.description}">${b.icon_url}</span>`).join('');
 
-        container.innerHTML = `
-            <div class="dashboard-grid">
-                <aside class="sidebar">
-                    <div class="card profile-header">
-                        <h2>${profile.full_name}</h2>
-                        <span class="eco-pet-emoji">${pet.emoji}</span>
-                        <span>Your Eco-Pet: <strong>${pet.status}</strong></span>
-                        <div class="points-display">${profile.points}</div>
-                        <div class="badges-grid">${badgesHTML || '<p>No badges yet!</p>'}</div>
-                    </div>
-                </aside>
-                <main class="content">
-                    <h2>Available Eco-Missions</h2>
-                    <div class="tasks-grid">
-                       ${tasks.map(task => `
-                            <div class="card task-card" onclick="alert('Task selected! Feature coming soon.')">
-                                <div>
-                                    <span class="task-type-badge task-type-${task.task_type === 'quiz' ? 'quiz' : 'photo'}">${task.task_type.replace('_', ' ')}</span>
-                                    <h3>${task.title}</h3>
-                                    <p>${task.description}</p>
-                                </div>
-                                <strong class="task-card-points">${task.points_reward} Points</strong>
-                            </div>`).join('')}
-                    </div>
-                </main>
-            </div>
-        `;
+        container.innerHTML = `<div class="dashboard-grid"><aside class="sidebar"><div class="card profile-header">
+            <h2>${profile.full_name}</h2><span class="eco-pet-emoji">${pet.emoji}</span><span>Your Eco-Pet: <strong>${pet.status}</strong></span>
+            <div class="points-display">${profile.points}</div><div class="badges-grid">${badgesHTML || '<p>No badges yet!</p>'}</div>
+        </div></aside><main class="content"><h2>Available Eco-Missions</h2><div class="tasks-grid">
+        ${tasks.map(task => `<a href="${task.task_type === 'quiz' ? `/quiz.html?id=${task.id}` : `/task_detail.html?id=${task.id}`}" class="card task-card">
+            <div><span class="task-type-badge task-type-${task.task_type}">${task.task_type.replace('_', ' ')}</span>
+            <h3>${task.title}</h3><p>${task.description}</p></div>
+            <strong class="task-card-points">${task.points_reward} Points</strong></a>`).join('')}
+        </div></main></div>`;
     } catch (error) {
         container.innerHTML = `<p class="error-message">Could not load dashboard: ${error.message}</p>`;
     }
 }
 
+async function initTaskDetailPage() {
+    const user = session.getUser();
+    if (!user || user.type !== 'student') return window.location.href = '/student_login.html';
+
+    const container = document.getElementById('task-content');
+    const taskId = new URLSearchParams(window.location.search).get('id');
+    if (!taskId) return container.innerHTML = '<p class="error-message">Task ID not found.</p>';
+
+    try {
+        const tasks = await api.getTasks();
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return container.innerHTML = '<p class="error-message">Task not found.</p>';
+
+        container.innerHTML = `<h2>${task.title}</h2><p>${task.description}</p>
+        <strong class="task-card-points">Reward: ${task.points_reward} Points</strong>
+        <div style="margin-top: 1.5rem;"><button id="submit-photo-btn" class="btn btn-green">I've Completed This (Submit for Review)</button></div>`;
+
+        document.getElementById('submit-photo-btn').onclick = async () => {
+            try {
+                const res = await api.submitPhoto(user.student_id, taskId);
+                alert(res.message);
+                window.location.href = '/student_dashboard.html';
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        };
+    } catch (error) {
+        container.innerHTML = `<p class="error-message">Could not load task: ${error.message}</p>`;
+    }
+}
+
+async function initQuizPage() {
+    const user = session.getUser();
+    if (!user || user.type !== 'student') return window.location.href = '/student_login.html';
+
+    const taskId = new URLSearchParams(window.location.search).get('id');
+    const quizTitle = document.getElementById('quiz-title');
+    const form = document.getElementById('quiz-form');
+    if (!taskId) return quizTitle.textContent = 'Error: Quiz ID not found.';
+
+    try {
+        const tasks = await api.getTasks();
+        const task = tasks.find(t => t.id === taskId);
+        if (!task || task.task_type !== 'quiz') return quizTitle.textContent = 'Error: Quiz not found.';
+
+        quizTitle.textContent = task.title;
+        const questionsHTML = task.questions.map((q, index) => `
+            <div class="quiz-question card"><p><strong>Question ${index + 1}: ${q.question_text}</strong></p>
+            <div class="quiz-options" data-question-id="${q.id}">
+                <input type="radio" id="q${q.id}_a" name="q_${q.id}" value="A" required><label for="q${q.id}_a">A) ${q.option_a}</label>
+                <input type="radio" id="q${q.id}_b" name="q_${q.id}" value="B"><label for="q${q.id}_b">B) ${q.option_b}</label>
+                <input type="radio" id="q${q.id}_c" name="q_${q.id}" value="C"><label for="q${q.id}_c">C) ${q.option_c}</label>
+            </div></div>`).join('');
+        form.innerHTML = questionsHTML + '<button type="submit" class="btn btn-blue">Submit Answers</button>';
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const answers = {};
+            task.questions.forEach(q => {
+                const selected = form.querySelector(`input[name="q_${q.id}"]:checked`);
+                if (selected) answers[q.id] = selected.value;
+            });
+
+            if (Object.keys(answers).length !== task.questions.length) {
+                return alert('Please answer all questions before submitting.');
+            }
+
+            try {
+                const result = await api.submitQuiz(user.student_id, taskId, answers);
+                alert(result.message);
+                window.location.href = '/student_dashboard.html';
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        });
+    } catch (error) {
+        quizTitle.textContent = `Error: ${error.message}`;
+    }
+}
+
+
 // --- GLOBAL ACTION HANDLERS ---
-// These are called from the `onclick` attributes in the HTML
 async function approveSubmission(submissionId) {
     if (!confirm('Are you sure you want to approve this submission?')) return;
     try {
         await api.approveSubmission(submissionId);
         alert('Submission approved!');
-        location.reload(); // Simple way to refresh the list
+        location.reload();
     } catch (error) {
         alert(`Error: ${error.message}`);
     }
@@ -269,7 +304,7 @@ function startQrScanner(elementId, callback) {
 }
 
 function stopQrScanner() {
-    if (qrScanner && qrScanner.getState() === 2) { // 2 is SCANNING state
+    if (qrScanner && qrScanner.getState() === 2) {
         qrScanner.stop().catch(err => console.error("QR Scanner failed to stop.", err));
     }
 }
