@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard - EcoQuest</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1>Teacher Dashboard</h1>
+            <button id="logout-btn" class="btn btn-red">Logout</button>
+        </div>
+        <p>Welcome, <span id="teacher-name"></span>!</p>
+        <a href="add_student.html" class="btn btn-green" style="margin-bottom: 1.5rem;">+ Add New Student</a>
+        <div class="card">
+            <h2>Pending Submissions</h2>
+            <div id="submissions-container">
+                <!-- Submissions will be loaded here by JavaScript -->
+                <p>Loading submissions...</p>
+            </div>
+        </div>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>

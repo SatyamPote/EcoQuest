@@ -25,6 +25,7 @@ class Student(Base):
     id = Column(UUID_COLUMN(as_uuid=True), primary_key=True, default=uuid.uuid4)
     student_id_card = Column(String, unique=True, index=True, nullable=False)
     full_name = Column(String, nullable=False)
+    class_name = Column(String) # ADD THIS LINE
     teacher_id = Column(UUID_COLUMN(as_uuid=True), ForeignKey("users.id"))
     points = Column(Integer, default=0)
     created_at = Column(DateTime, default=func.now())

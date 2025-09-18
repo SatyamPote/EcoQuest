@@ -31,7 +31,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # --- Pydantic Models for API data validation (updated) ---
 class TeacherCreate(BaseModel): email: EmailStr; password: str; full_name: str
 class TeacherLogin(BaseModel): email: EmailStr; password: str
-class StudentCreate(BaseModel): student_id_card: str; full_name: str
+class StudentCreate(BaseModel): student_id_card: str; full_name: str; class_name: str
 class StudentLogin(BaseModel): student_id_card: str
 
 class BadgeResponse(BaseModel):
@@ -74,6 +74,17 @@ class SubmissionForTeacherResponse(BaseModel):
     submission_data: str
     class Config: orm_mode = True
 
+# --- THIS IS THE MISSING REGISTRATION ROUTE ---
+@app.post("/api/teacher/register", status_code=status.HTTP_201_CREATED)
+def register_teacher(teacher: TeacherCreate, db: Session = Depends(get_db)):
+    db_user = crud.get_user_by_email(db, email=teacher.email)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    hashed_password = pwd_context.hash(teacher.password)
+    new_teacher = crud.create_teacher(db=db, email=teacher.email, password_hash=hashed_password, full_name=teacher.full_name)
+    # For simplicity, we can return a success message or the basic teacher info
+    return {"message": "Teacher registered successfully", "teacher_id": new_teacher.id, "email": new_teacher.email}
+
 
 # --- Authentication Routes (from before) ---
 @app.post("/api/teacher/login")
@@ -92,7 +103,7 @@ def login_student(form_data: StudentLogin, db: Session = Depends(get_db)):
     
 @app.post("/api/teacher/{teacher_id}/add-student")
 def add_student_by_teacher(teacher_id: uuid.UUID, student: StudentCreate, db: Session = Depends(get_db)):
-    new_student = crud.create_student(db=db, student_id_card=student.student_id_card, full_name=student.full_name, teacher_id=teacher_id)
+    new_student = crud.create_student(db=db, student_id_card=student.student_id_card, full_name=student.full_name, class_name=student.class_name, teacher_id=teacher_id)
     return new_student
 
 # --- New Feature Routes ---
@@ -110,8 +121,6 @@ def get_all_tasks(db: Session = Depends(get_db)):
 
 @app.post("/api/student/{student_id}/submit/photo/{task_id}")
 def submit_photo_task(student_id: uuid.UUID, task_id: uuid.UUID, db: Session = Depends(get_db)):
-    # In a real app, you would handle a file upload here.
-    # For the hackathon, we just create a pending submission.
     crud.create_submission(db, student_id, task_id, "Photo awaiting review", "pending")
     return {"message": "Submission received and awaiting teacher approval."}
 
@@ -126,18 +135,15 @@ def submit_quiz_task(student_id: uuid.UUID, task_id: uuid.UUID, submission: Quiz
         if submission.answers.get(str(q.id)) == q.correct_answer:
             score += 1
 
-    if score == total_questions: # Full score
+    if score == total_questions:
         student.points += task.points_reward
         status = 'approved'
-        # Award 'Quiz Whiz' badge
         badge = crud.get_badge_by_name(db, "Quiz Whiz")
         if badge: crud.award_badge_to_student(db, student, badge)
-        # Award 'First Steps' badge
         first_steps_badge = crud.get_badge_by_name(db, "First Steps")
         if first_steps_badge: crud.award_badge_to_student(db, student, first_steps_badge)
-
     else:
-        status = 'rejected' # Or 'completed' with partial points if you wish
+        status = 'rejected'
 
     crud.create_submission(db, student_id, task_id, f"Score: {score}/{total_questions}", status)
     db.commit()
@@ -147,7 +153,6 @@ def submit_quiz_task(student_id: uuid.UUID, task_id: uuid.UUID, submission: Quiz
 @app.get("/api/teacher/{teacher_id}/submissions", response_model=List[SubmissionForTeacherResponse])
 def get_pending_submissions(teacher_id: uuid.UUID, db: Session = Depends(get_db)):
     submissions = crud.get_pending_submissions_by_teacher(db, teacher_id)
-    # Map to response model
     response = [
         SubmissionForTeacherResponse(
             id=s.id,
@@ -167,7 +172,6 @@ def approve_submission(submission_id: uuid.UUID, db: Session = Depends(get_db)):
     submission.status = 'approved'
     submission.student.points += submission.task.points_reward
     
-    # Award 'Eco Warrior' and 'First Steps' badges
     eco_warrior_badge = crud.get_badge_by_name(db, "Eco Warrior")
     if eco_warrior_badge: crud.award_badge_to_student(db, submission.student, eco_warrior_badge)
     first_steps_badge = crud.get_badge_by_name(db, "First Steps")

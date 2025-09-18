@@ -17,10 +17,7 @@ body {
     line-height: 1.6;
 }
 
-#app { width: 100%; max-width: 900px; margin: 0 auto; padding: 1.5rem; }
-.page { display: none; }
-.page.active { display: block; animation: fadeIn 0.5s; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+main { width: 100%; max-width: 900px; margin: 0 auto; padding: 1.5rem; }
 
 /* --- Global Elements --- */
 h1 { font-family: 'Poppins', sans-serif; font-size: 2.5rem; color: var(--primary-green); margin-bottom: 0.5rem; }
@@ -30,7 +27,7 @@ p { color: var(--text-light); margin-bottom: 1.5rem; }
     display: inline-block; padding: 0.75rem 1.5rem; border: none;
     border-radius: 0.5rem; color: white; font-size: 1rem;
     font-weight: 600; cursor: pointer; text-align: center;
-    transition: background-color 0.2s, transform 0.1s;
+    transition: background-color 0.2s, transform 0.1s; text-decoration: none;
 }
 .btn:active { transform: scale(0.98); }
 .btn-green { background-color: var(--secondary-green); }
@@ -48,7 +45,7 @@ p { color: var(--text-light); margin-bottom: 1.5rem; }
     border: 1px solid var(--border-color); margin-bottom: 1.5rem;
 }
 .error-message { color: var(--error-color); text-align: center; margin-top: 1rem; font-weight: 600; }
-.back-button { font-weight: 600; color: var(--text-light); cursor: pointer; margin-bottom: 1.5rem; display: inline-block; }
+.back-button { font-weight: 600; color: var(--text-light); margin-bottom: 1.5rem; display: inline-block; text-decoration: none; }
 .back-button:hover { text-decoration: underline; }
 .centered-container { text-align: center; }
 
@@ -57,7 +54,7 @@ p { color: var(--text-light); margin-bottom: 1.5rem; }
 @media (min-width: 768px) { .role-selector { flex-direction: row; justify-content: center; } }
 .role-card {
     padding: 2.5rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
-    text-align: center;
+    text-align: center; display: block; text-decoration: none;
 }
 .role-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
 .role-card h2 { font-size: 1.75rem; }
@@ -77,7 +74,6 @@ p { color: var(--text-light); margin-bottom: 1.5rem; }
 
 /* --- Student Dashboard --- */
 .profile-header { text-align: center; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); }
-.eco-pet { font-size: 1.2rem; }
 .eco-pet-emoji { font-size: 4rem; display: block; margin: 0.5rem 0; }
 .points-display { font-size: 2.5rem; font-weight: 700; color: var(--warning-color); }
 .badges-grid { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; margin-top: 1rem; }
@@ -98,22 +94,9 @@ p { color: var(--text-light); margin-bottom: 1.5rem; }
 .task-type-quiz { background-color: #eff6ff; color: #1d4ed8; }
 .task-type-photo { background-color: #f0fdf4; color: #166534; }
 
-/* --- Quiz Page --- */
-.quiz-question { margin-bottom: 2rem; }
-.quiz-options label {
-    display: block; background-color: #f9fafb; padding: 1rem;
-    border: 1px solid var(--border-color); border-radius: 0.5rem;
-    margin-top: 0.5rem; cursor: pointer; transition: background-color 0.2s;
-}
-.quiz-options input { display: none; }
-.quiz-options input:checked + label { background-color: #dbeafe; border-color: #60a5fa; }
-
 /* --- Leaderboard & Submission Lists --- */
 .list-table { width: 100%; border-collapse: collapse; }
 .list-table th, .list-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color); }
 .list-table th { background-color: #f9fafb; }
 .list-table tr:hover { background-color: #f9fafb; }
-.rank-1 { color: #f59e0b; font-weight: 700; } /* Gold */
-.rank-2 { color: #71717a; font-weight: 700; } /* Silver */
-.rank-3 { color: #a16207; font-weight: 700; } /* Bronze */
 .submission-actions .btn { padding: 0.5rem 1rem; font-size: 0.9rem; margin-right: 0.5rem; }

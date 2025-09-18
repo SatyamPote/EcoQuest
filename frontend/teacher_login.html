@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Login - EcoQuest</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main>
+        <a href="index.html" class="back-button">&larr; Back</a>
+        <div class="form-container card">
+            <h2 class="teacher-text">Teacher Login</h2>
+            <form id="teacher-login-form">
+                <div class="form-group"><label for="teacher-email">Email</label><input type="email" id="teacher-email" required></div>
+                <div class="form-group"><label for="teacher-password">Password</label><input type="password" id="teacher-password" required></div>
+                <button type="submit" class="btn btn-blue" style="width: 100%;">Login</button>
+                <p id="login-error" class="error-message"></p>
+            </form>
+        </div>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>

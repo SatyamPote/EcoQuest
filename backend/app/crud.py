@@ -19,8 +19,13 @@ def get_student_by_id(db: Session, student_id: uuid.UUID):
 def get_student_by_id_card(db: Session, student_id_card: str):
     return db.query(models.Student).filter(models.Student.student_id_card == student_id_card).first()
 
-def create_student(db: Session, student_id_card: str, full_name: str, teacher_id: uuid.UUID):
-    db_student = models.Student(student_id_card=student_id_card, full_name=full_name, teacher_id=teacher_id)
+def create_student(db: Session, student_id_card: str, full_name: str, class_name: str, teacher_id: uuid.UUID): # ADD class_name
+    db_student = models.Student(
+        student_id_card=student_id_card,
+        full_name=full_name,
+        class_name=class_name, # ADD THIS LINE
+        teacher_id=teacher_id
+    )
     db.add(db_student)
     db.commit()
     db.refresh(db_student)
