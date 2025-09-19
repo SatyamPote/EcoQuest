@@ -1,22 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - EcoQuest</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+    <header id="navbar-container"></header>
     <main>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h1>Dashboard</h1>
-            <button id="logout-btn" class="btn btn-red">Logout</button>
-        </div>
         <div id="dashboard-content">
-            <!-- Student dashboard content will be loaded here -->
-            <p>Loading your profile...</p>
+            <div class="spinner"></div>
+        </div>
+        <div id="history-container" class="card" style="margin-top: 2rem;">
+            <h2>My Submission History</h2>
+            <div id="history-content">
+                <div class="spinner"></div>
+            </div>
         </div>
     </main>
+    <div id="notification-container"></div>
+    <script src="components/notifications.js"></script>
+    <script src="components/navbar.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>

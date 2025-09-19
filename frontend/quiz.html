@@ -1,19 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quiz - EcoQuest</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+    <header id="navbar-container"></header>
     <main>
-         <a href="student_dashboard.html" class="back-button">&larr; Cancel Quiz</a>
-         <h1 id="quiz-title">Loading Quiz...</h1>
-         <form id="quiz-form">
-            <!-- Quiz questions will be rendered here by JavaScript -->
-         </form>
+        <h1 id="quiz-title">
+            <div class="spinner"></div>
+        </h1>
+        <form id="quiz-form"></form>
     </main>
+    <div id="notification-container"></div>
+    <script src="components/notifications.js"></script>
+    <script src="components/navbar.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>

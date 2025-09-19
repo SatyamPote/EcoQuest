@@ -1,19 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Task Details - EcoQuest</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+    <header id="navbar-container"></header>
     <main>
-        <a href="student_dashboard.html" class="back-button">&larr; Back to Dashboard</a>
         <div id="task-content" class="card">
-            <!-- Task details will be loaded here by JavaScript -->
-            <p>Loading task details...</p>
+            <div class="spinner"></div>
         </div>
     </main>
+    <div id="notification-container"></div>
+    <script src="components/notifications.js"></script>
+    <script src="components/navbar.js"></script>
     <script src="script.js"></script>
 </body>
-</html> 
+
+</html>

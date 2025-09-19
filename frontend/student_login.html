@@ -1,20 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Login - EcoQuest</title>
-    <link rel="stylesheet" href="/frontend/style.css">
+    <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
+
 <body>
-    <main class="centered-container">
-        <a href="index.html" class="back-button">&larr; Back</a>
+    <main class="centered-container"><a href="index.html" class="back-button">&larr; Back</a>
         <h1>Student Login</h1>
         <p>Scan the QR code on your ID card to begin.</p>
         <div id="qr-reader" style="width:100%; max-width: 400px; margin: auto;"></div>
-        <p id="login-error" class="error-message"></p>
     </main>
+    <div id="notification-container"></div>
+    <script src="components/notifications.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>

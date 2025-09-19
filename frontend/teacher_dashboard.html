@@ -1,37 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-T">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Dashboard - EcoQuest</title>
-    <link rel="stylesheet" href="/frontend/style.css">
-    <!-- ADD Chart.js library -->
+    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
-    <header id="navbar-container"></header> <!-- ADD THIS -->
+    <header id="navbar-container"></header>
     <main>
-        <h1>Teacher Dashboard</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <h1>Teacher Dashboard</h1>
+        </div>
         <p>Welcome, <span id="teacher-name"></span>!</p>
-        
         <div class="dashboard-grid">
             <div id="submissions-container" class="card">
-                <h2>Pending Submissions</h2>
                 <div class="spinner"></div>
             </div>
             <div id="analytics-container" class="card">
-                <h2>Class Analytics</h2>
-                <canvas id="tasksChart"></canvas>
+                <h2>Class Analytics</h2><canvas id="tasksChart"></canvas>
             </div>
         </div>
-
-        <div id="roster-container" class="card">
-            <h2>Student Roster</h2>
+        <div id="roster-container" class="card" style="margin-top: 2rem;">
             <div class="spinner"></div>
         </div>
     </main>
-    <div id="notification-container"></div> <!-- ADD THIS -->
-    <script src="/components/notifications.js"></script> <!-- ADD THIS -->
-    <script src="/components/navbar.js"></script> <!-- ADD THIS -->
-    <script src="script.js"></script> <!-- This should be last -->
+    <div id="notification-container"></div>
+    <script src="components/notifications.js"></script>
+    <script src="components/navbar.js"></script>
+    <script src="script.js"></script>
 </body>
+
 </html>

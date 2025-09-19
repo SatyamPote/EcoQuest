@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,30 +8,31 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
+
 <body>
+    <header id="navbar-container"></header>
     <main>
-        <a href="/teacher_dashboard.html" class="back-button">&larr; Back to Dashboard</a>
         <h1>Add New Student</h1>
         <div class="card form-container">
             <form id="add-student-form">
                 <p><strong>Step 1:</strong> Scan the QR code on the student's ID card.</p>
                 <div id="qr-reader" style="width:100%; max-width: 350px; margin: auto;"></div>
-                <div id="scanned-id-feedback" style="display:none; margin-top:1rem; font-weight: bold; color: var(--primary-green);"></div>
-                <input type="hidden" id="scanned-student-id">
-
+                <div id="scanned-id-feedback"
+                    style="display:none; margin-top:1rem; font-weight: bold; color: var(--primary-green);"></div><input
+                    type="hidden" id="scanned-student-id">
                 <p style="margin-top: 1.5rem;"><strong>Step 2:</strong> Fill in the student's details.</p>
-                <div class="form-group">
-                    <label for="new-student-name">Student's Full Name</label>
-                    <input type="text" id="new-student-name" required>
-                </div>
-                 <div class="form-group">
-                    <label for="new-student-class">Class (e.g., 8th Grade, Section A)</label>
-                    <input type="text" id="new-student-class" required>
-                </div>
-                <button type="submit" class="btn btn-blue" style="width: 100%;">Add Student to Roster</button>
+                <div class="form-group"><label for="new-student-name">Student's Full Name</label><input type="text"
+                        id="new-student-name" required></div>
+                <div class="form-group"><label for="new-student-class">Class (e.g., 8th Grade)</label><input type="text"
+                        id="new-student-class" required></div><button type="submit" class="btn btn-blue"
+                    style="width: 100%;">Add Student to Roster</button>
             </form>
         </div>
     </main>
+    <div id="notification-container"></div>
+    <script src="components/notifications.js"></script>
+    <script src="components/navbar.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>
