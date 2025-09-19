@@ -188,28 +188,12 @@ async function initTaskDetailPage() {
         if (!task) return container.innerHTML = '<p class="error-message">Task not found.</p>';
 
         if (task.task_type === "photo_upload") {
-            container.innerHTML = `<h2>${task.title}</h2><p>${task.description}</p><strong class="task-card-points">Reward: ${task.points_reward} Points</strong><div style="margin-top: 1.5rem;"><button id="submit-btn" class="btn btn-green">Submit for Review</button></div>`;
-            document.getElementById('submit-btn').onclick = async () => {
-                await api.submitPhoto(user.student_id, taskId);
-                alert('Task submitted for review!'); // MODIFIED: Replaced notifications
-                setTimeout(() => window.location.href = 'student_dashboard.html', 1500);
-            };
+            setupCameraUI(container, task);
         } else if (task.task_type === "secret_code") {
-            container.innerHTML = `<h2>${task.title}</h2><p>${task.description}</p><div class="form-group"><label for="secret-code">Enter Secret Code</label><input type="text" id="secret-code"></div><button id="submit-btn" class="btn btn-blue">Verify Code</button>`;
-            document.getElementById('submit-btn').onclick = () => {
-                const code = document.getElementById('secret-code').value;
-                if (code.toUpperCase() === 'OAK-123') { // Demo secret code
-                    api.submitPhoto(user.student_id, taskId).then(() => {
-                        alert('Correct Code! Task submitted!'); // MODIFIED: Replaced notifications
-                        setTimeout(() => window.location.href = 'student_dashboard.html', 1500);
-                    });
-                } else {
-                    alert('Incorrect code. Please try again.'); // MODIFIED: Replaced notifications
-                }
-            };
+            setupSecretCodeUI(container, task);
         }
     } catch (error) {
-        alert(error.message); // MODIFIED: Replaced notifications
+        notifications.error(error.message);
     }
 }
 
@@ -219,25 +203,25 @@ async function initQuizPage() {
     if (!user || user.type !== 'student') return window.location.href = 'student_login.html';
 
     const taskId = new URLSearchParams(window.location.search).get('id');
-    const quizTitle = document.getElementById('quiz-title');
+    const quizTitleEl = document.getElementById('quiz-title');
     const form = document.getElementById('quiz-form');
-    if (!quizTitle || !form) return;
-    
-    if (!taskId) return quizTitle.textContent = 'Error: Quiz ID not found.';
+    if (!taskId) return quizTitleEl.innerHTML = 'Error: Quiz ID not found.';
 
     try {
         const tasks = await api.getTasks();
         const task = tasks.find(t => t.id === taskId);
-        if (!task || task.task_type !== 'quiz') return quizTitle.textContent = 'Error: Quiz not found.';
+        if (!task || task.task_type !== 'quiz') return quizTitleEl.innerHTML = 'Error: Quiz not found.';
 
-        quizTitle.textContent = task.title;
+        quizTitleEl.innerHTML = task.title;
         const questionsHTML = task.questions.map((q, index) => `
-            <div class="quiz-question card"><p><strong>Question ${index + 1}: ${q.question_text}</strong></p>
-            <div class="quiz-options" data-question-id="${q.id}">
-                <input type="radio" id="q${q.id}_a" name="q_${q.id}" value="A" required><label for="q${q.id}_a">A) ${q.option_a}</label>
-                <input type="radio" id="q${q.id}_b" name="q_${q.id}" value="B"><label for="q${q.id}_b">B) ${q.option_b}</label>
-                <input type="radio" id="q${q.id}_c" name="q_${q.id}" value="C"><label for="q${q.id}_c">C) ${q.option_c}</label>
-            </div></div>`).join('');
+            <div class="quiz-question card">
+                <p><strong>Question ${index + 1}: ${q.question_text}</strong></p>
+                <div class="quiz-options" data-question-id="${q.id}">
+                    <input type="radio" id="q${q.id}_a" name="q_${q.id}" value="A" required><label for="q${q.id}_a">A) ${q.option_a}</label>
+                    <input type="radio" id="q${q.id}_b" name="q_${q.id}" value="B"><label for="q${q.id}_b">B) ${q.option_b}</label>
+                    <input type="radio" id="q${q.id}_c" name="q_${q.id}" value="C"><label for="q${q.id}_c">C) ${q.option_c}</label>
+                </div>
+            </div>`).join('');
         form.innerHTML = questionsHTML + '<button type="submit" class="btn btn-blue">Submit Answers</button>';
 
         form.addEventListener('submit', async (e) => {
@@ -249,19 +233,19 @@ async function initQuizPage() {
             });
 
             if (Object.keys(answers).length !== task.questions.length) {
-                return alert('Please answer all questions before submitting.');
+                return notifications.error('Please answer all questions before submitting.');
             }
 
             try {
                 const result = await api.submitQuiz(user.student_id, taskId, answers);
-                alert(result.message);
-                window.location.href = 'student_dashboard.html';
+                notifications.success(result.message);
+                setTimeout(() => window.location.href = 'student_dashboard.html', 2000);
             } catch (error) {
-                alert(`Error: ${error.message}`);
+                notifications.error(`Error: ${error.message}`);
             }
         });
     } catch (error) {
-        quizTitle.textContent = `Error: ${error.message}`;
+        quizTitleEl.innerHTML = `Error: ${error.message}`;
     }
 }
 
@@ -364,3 +348,109 @@ function stopQrScanner() {
         qrScanner.stop().catch(err => console.error("QR Scanner failed to stop.", err));
     }
 }
+
+function setupSecretCodeUI(container, task) {
+    const user = session.getUser();
+    container.innerHTML = `<h2>${task.title}</h2><p>${task.description}</p><div class="form-group"><label for="secret-code">Enter Secret Code</label><input type="text" id="secret-code" placeholder="e.g., OAK-123"></div><button id="submit-btn" class="btn btn-blue">Verify Code</button>`;
+    document.getElementById('submit-btn').onclick = () => {
+        const code = document.getElementById('secret-code').value;
+        if (code.toUpperCase() === 'OAK-123') { // Demo secret code
+            api.submitPhoto(user.student_id, task.id).then(() => {
+                notifications.success('Correct Code! Task submitted for approval!');
+                setTimeout(() => window.location.href = 'student_dashboard.html', 1500);
+            });
+        } else {
+            notifications.error('Incorrect code. Please try again.');
+        }
+    };
+}
+
+function setupCameraUI(container, task) {
+    const user = session.getUser();
+    container.innerHTML = `
+        <h2>${task.title}</h2>
+        <p>${task.description}</p>
+        <div class="camera-container">
+            <video id="camera-view" class="camera-view" autoplay playsinline></video>
+            <canvas id="photo-preview" class="photo-preview hidden"></canvas>
+            <div id="camera-controls" class="camera-controls">
+                <button id="capture-btn" class="btn btn-blue">Capture Photo</button>
+            </div>
+            <div id="preview-controls" class="camera-controls hidden">
+                <button id="retake-btn" class="btn btn-gray">Retake</button>
+                <button id="submit-photo-btn" class="btn btn-green">Submit for Review</button>
+            </div>
+        </div>`;
+
+    const video = document.getElementById('camera-view');
+    const canvas = document.getElementById('photo-preview');
+    const captureBtn = document.getElementById('capture-btn');
+    const retakeBtn = document.getElementById('retake-btn');
+    const submitBtn = document.getElementById('submit-photo-btn');
+    const cameraControls = document.getElementById('camera-controls');
+    const previewControls = document.getElementById('preview-controls');
+
+    // Start camera
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(stream => {
+            cameraStream = stream;
+            video.srcObject = stream;
+        })
+        .catch(err => {
+            console.error("Camera Error:", err);
+            notifications.error("Could not access camera. Please check permissions.");
+            container.innerHTML += `<p class="error-message">Camera access is required for this task.</p>`;
+        });
+
+    // Capture photo
+    captureBtn.addEventListener('click', () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        video.classList.add('hidden');
+        cameraControls.classList.add('hidden');
+        canvas.classList.remove('hidden');
+        previewControls.classList.remove('hidden');
+        stopCamera();
+    });
+
+    // Retake photo
+    retakeBtn.addEventListener('click', () => {
+        video.classList.remove('hidden');
+        cameraControls.classList.remove('hidden');
+        canvas.classList.add('hidden');
+        previewControls.classList.add('hidden');
+        startCamera(video); // Restart the camera stream
+    });
+
+    // Submit photo (simulation)
+    submitBtn.addEventListener('click', async () => {
+        try {
+            await api.submitPhoto(user.student_id, task.id);
+            notifications.success('Photo submitted for review!');
+            setTimeout(() => window.location.href = 'student_dashboard.html', 1500);
+        } catch (error) {
+            notifications.error(`Submission failed: ${error.message}`);
+        }
+    });
+}
+
+// --- CAMERA UTILITY FUNCTIONS ---
+function startCamera(videoElement) {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(stream => {
+            cameraStream = stream;
+            videoElement.srcObject = stream;
+        });
+}
+
+function stopCamera() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+    }
+}
+
+// Add a listener to stop the camera if the user navigates away
+window.addEventListener('beforeunload', stopCamera);
