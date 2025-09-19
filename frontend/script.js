@@ -10,6 +10,7 @@ const session = {
     saveUser: (user) => localStorage.setItem('ecoquest_user', JSON.stringify(user)),
     getUser: () => JSON.parse(localStorage.getItem('ecoquest_user')),
     logout: () => {
+        stopCamera(); // Ensure camera is off before navigating
         localStorage.removeItem('ecoquest_user');
         window.location.href = 'index.html';
     }
@@ -29,14 +30,9 @@ const api = {
                 throw new Error(errorData.detail || 'An API error occurred');
             }
             const contentType = response.headers.get("content-type");
-            if (contentType && contentType.includes("application/json")) {
-                return response.json();
-            }
+            if (contentType && contentType.includes("application/json")) { return response.json(); }
             return;
-        } catch (error) {
-            console.error('API Request Error:', error);
-            throw error; // This will trigger "Failed to fetch" if the server is down/unreachable
-        }
+        } catch (error) { console.error('API Request Error:', error); throw error; }
     },
     loginTeacher: (email, password) => api.request('/api/teacher/login', { method: 'POST', body: { email, password } }),
     loginStudent: (student_id_card) => api.request('/api/student/login', { method: 'POST', body: { student_id_card } }),
@@ -71,8 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
         '/create_quiz.html': initCreateQuizPage,
     };
     for (const path in pageInitializers) {
-        // Use endsWith to handle both local file paths and deployed paths
-        if (pagePath.endsWith(path) || (pagePath.endsWith('/') && path === '/index.html')) {
+        if (pagePath.endsWith(path) || (pagePath.endsWith('/') && path.includes('index.html'))) {
             pageInitializers[path]();
             return;
         }
@@ -103,7 +98,7 @@ function initStudentLoginPage() {
             window.location.href = 'student_dashboard.html';
         } catch (error) {
             notifications.error(error.message);
-            setTimeout(() => { if (qrScanner && qrScanner.getState() !== 2) startQrScanner('qr-reader', () => { }); }, 3000);
+            setTimeout(() => { if (qrScanner && qrScanner.getState() !== 2) startQrScanner('qr-reader', ()=>{}); }, 3000);
         }
     });
 }
@@ -112,7 +107,7 @@ async function initTeacherDashboardPage() {
     const user = session.getUser();
     if (!user || user.type !== 'teacher') return window.location.href = 'teacher_login.html';
     const teacherName = document.getElementById('teacher-name');
-    if (teacherName) teacherName.textContent = user.full_name;
+    if(teacherName) teacherName.textContent = user.full_name;
     await refreshTeacherDashboard(user.teacher_id);
 }
 
@@ -130,7 +125,7 @@ async function initStudentDashboardPage() {
         renderSubmissionHistory(history);
     } catch (error) {
         notifications.error(`Could not load dashboard data: ${error.message}`);
-        if (container) container.innerHTML = `<p class="error-message">Could not load dashboard. Please try logging in again.</p>`;
+        if(container) container.innerHTML = `<p class="error-message">Could not load dashboard. Please try logging in again.</p>`;
     }
 }
 
@@ -187,23 +182,23 @@ function initCreateQuizPage() {
     const questionsContainer = document.getElementById('questions-container');
     const addQuestionBtn = document.getElementById('add-question-btn');
     const form = document.getElementById('create-quiz-form');
-    let questionCount = 0;
+    let questionCounter = 0;
     const addQuestionBlock = () => {
-        questionCount++;
+        questionCounter++;
         const block = document.createElement('div');
-        block.className = 'question-block'; block.id = `question-block-${questionCount}`;
-        block.innerHTML = `<h3>Question ${questionCount}</h3><button type="button" class="remove-question-btn" data-remove-id="${questionCount}">&times;</button><div class="form-group"><label>Question Text</label><input type="text" class="q-text" required></div><div class="form-group"><label>Option A</label><input type="text" class="q-opt-a" required></div><div class="form-group"><label>Option B</label><input type="text" class="q-opt-b" required></div><div class="form-group"><label>Option C</label><input type="text" class="q-opt-c" required></div><div class="form-group correct-answer-group"><label>Correct Answer</label><select class="q-correct"><option value="A">Option A</option><option value="B">Option B</option><option value="C">Option C</option></select></div>`;
+        block.className = 'question-block';
+        block.innerHTML = `<h3>Question ${questionCounter}</h3><button type="button" class="remove-question-btn">&times;</button><div class="form-group"><label>Question Text</label><input type="text" class="q-text" required></div><div class="form-group"><label>Option A</label><input type="text" class="q-opt-a" required></div><div class="form-group"><label>Option B</label><input type="text" class="q-opt-b" required></div><div class="form-group"><label>Option C</label><input type="text" class="q-opt-c" required></div><div class="form-group correct-answer-group"><label>Correct Answer</label><select class="q-correct"><option value="A">Option A</option><option value="B">Option B</option><option value="C">Option C</option></select></div>`;
         questionsContainer.appendChild(block);
         block.querySelector('.remove-question-btn').addEventListener('click', () => block.remove());
     };
     addQuestionBtn.addEventListener('click', addQuestionBlock);
-    addQuestionBlock();
+    addQuestionBlock(); // Start with one question
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const questions = [];
         const questionBlocks = document.querySelectorAll('.question-block');
         if (questionBlocks.length === 0) return notifications.error('A quiz must have at least one question.');
-        questionBlocks.forEach(block => {
+        for (const block of questionBlocks) {
             questions.push({
                 question_text: block.querySelector('.q-text').value,
                 option_a: block.querySelector('.q-opt-a').value,
@@ -211,7 +206,7 @@ function initCreateQuizPage() {
                 option_c: block.querySelector('.q-opt-c').value,
                 correct_answer: block.querySelector('.q-correct').value
             });
-        });
+        }
         const quizData = { title: document.getElementById('quiz-title').value, description: document.getElementById('quiz-description').value, points_reward: parseInt(document.getElementById('quiz-points').value), questions: questions };
         try {
             await api.createFullQuiz(quizData);
@@ -266,6 +261,7 @@ async function initLeaderboardPage() {
     } catch (error) { notifications.error(error.message); if (container) container.innerHTML = `<p class="error-message">Could not load leaderboard.</p>`; }
 }
 
+
 // --- DYNAMIC DATA & RENDER FUNCTIONS ---
 async function refreshTeacherDashboard(teacherId) {
     try {
@@ -274,9 +270,33 @@ async function refreshTeacherDashboard(teacherId) {
     } catch (error) { notifications.error(`Could not refresh dashboard data: ${error.message}`); }
 }
 
-function renderStudentDashboard(container, profile, tasks) { /* ... same as previous final version ... */ }
-function renderSubmissions(submissions) { /* ... same as previous final version ... */ }
-function renderRoster(roster) { /* ... same as previous final version ... */ }
+function renderStudentDashboard(container, profile, tasks) {
+    if (!container) return;
+    const getPet = (points) => {
+        const levels = { 1: { name: 'Sprout', emoji: '🌱', next: 100 }, 2: { name: 'Sapling', emoji: '🌳', next: 300 }, 3: { name: 'Mighty Tree', emoji: '🌲', next: Infinity } };
+        let level = 1; if (points >= levels[1].next) level = 2; if (points >= levels[2].next) level = 3;
+        const progress = level < 3 ? (points / levels[level].next) * 100 : 100;
+        return { ...levels[level], progress };
+    };
+    const pet = getPet(profile.points); const badgesHTML = profile.badges.map(b => `<span class="badge" title="${b.name}: ${b.description}">${b.icon_url}</span>`).join('');
+    container.innerHTML = `<div class="dashboard-grid"><aside class="sidebar"><div class="card eco-pet-card"><h2>${profile.full_name}</h2><span class="eco-pet-emoji">${pet.emoji}</span><span><strong>${pet.name}</strong></span><div class="progress-bar-container"><div class="progress-bar" style="width: ${pet.progress}%;"></div></div><div class="points-display">${profile.points} Points</div><div class="badges-grid">${badgesHTML || '<p style="font-size: 0.9rem; color: var(--text-light);">No badges yet!</p>'}</div></div></aside><main class="content"><h2>Available Eco-Missions</h2><div class="tasks-grid">${tasks.map(task => `<a href="${task.task_type === 'quiz' ? 'quiz.html?id=' + task.id : 'task_detail.html?id=' + task.id}" class="card task-card"><div><span class="task-type-badge task-type-${task.task_type.replace('_','')}">${task.task_type.replace('_', ' ')}</span><h3>${task.title}</h3><p>${task.description}</p></div><strong class="task-card-points">${task.points_reward} Points</strong></a>`).join('')}</div></main></div>`;
+}
+
+function renderSubmissions(submissions) {
+    const container = document.getElementById('submissions-container'); if(!container) return;
+    let content;
+    if (submissions.length === 0) content = '<h2>Pending Submissions</h2><p>No pending submissions. Great job!</p>';
+    else { const rows = submissions.map(s => `<tr><td>${s.student_name}</td><td>${s.task_title}</td><td class="submission-actions"><button class="btn btn-green" onclick="approveSubmission('${s.id}')">Approve</button><button class="btn btn-red" onclick="rejectSubmission('${s.id}')">Reject</button></td></tr>`).join(''); content = `<h2>Pending Submissions</h2><table class="list-table"><thead><tr><th>Student</th><th>Task</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table>`; }
+    container.innerHTML = content;
+}
+
+function renderRoster(roster) {
+    const container = document.getElementById('roster-container'); if (!container) return;
+    let content;
+    if (roster.length === 0) content = '<h2>Student Roster</h2><p>No students have been added yet.</p>';
+    else { const rows = roster.map(s => `<tr><td>${s.full_name}</td><td>${s.class_name}</td><td>${s.points}</td></tr>`).join(''); content = `<h2>Student Roster</h2><table class="list-table"><thead><tr><th>Name</th><th>Class</th><th>Points</th></tr></thead><tbody>${rows}</tbody></table>`; }
+    container.innerHTML = content;
+}
 
 function renderAnalyticsChart(roster) {
     const chartEl = document.getElementById('tasksChart'); if (!chartEl) return;
@@ -286,27 +306,59 @@ function renderAnalyticsChart(roster) {
     myChart = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(dist), datasets: [{ data: Object.values(dist), backgroundColor: ['#34d399', '#fbbf24', '#60a5fa'], hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } } });
 }
 
-function renderSubmissionHistory(history) { /* ... same as previous final version ... */ }
+function renderSubmissionHistory(history) {
+    const container = document.getElementById('history-content'); if(!container) return;
+    if (history.length === 0) { container.innerHTML = '<p>You haven\'t submitted any tasks yet. Get started!</p>'; return; }
+    const statusBadges = { approved: '<span class="status-badge status-approved">Approved</span>', pending: '<span class="status-badge status-pending">Pending</span>', rejected: '<span class="status-badge status-rejected">Rejected</span>' };
+    container.innerHTML = `<table class="list-table"><thead><tr><th>Task</th><th>Submitted</th><th>Status</th></tr></thead><tbody>${history.map(s => `<tr><td>${s.task_title}</td><td>${new Date(s.submitted_at).toLocaleDateString()}</td><td>${statusBadges[s.status] || s.status}</td></tr>`).join('')}</tbody></table>`;
+}
 
 // --- UI SETUP FUNCTIONS ---
-function setupSecretCodeUI(container, task) { /* ... same as previous final version ... */ }
-function setupCameraUI(container, task) { /* ... same as previous final version ... */ }
+function setupSecretCodeUI(container, task) {
+    const user = session.getUser();
+    container.innerHTML = `<h2>${task.title}</h2><p>${task.description}</p><div class="form-group"><label for="secret-code">Enter Secret Code</label><input type="text" id="secret-code" placeholder="e.g., OAK-123"></div><button id="submit-btn" class="btn btn-blue">Verify Code</button>`;
+    document.getElementById('submit-btn').onclick = () => {
+        if (document.getElementById('secret-code').value.toUpperCase() === 'OAK-123') {
+            api.submitPhoto(user.student_id, task.id).then(() => { notifications.success('Correct Code! Task submitted!'); setTimeout(() => window.location.href = 'student_dashboard.html', 1500); });
+        } else { notifications.error('Incorrect code. Please try again.'); }
+    };
+}
+
+function setupCameraUI(container, task) {
+    const user = session.getUser();
+    container.innerHTML = `<h2>${task.title}</h2><p>${task.description}</p><div class="camera-container"><video id="camera-view" class="camera-view" autoplay playsinline></video><canvas id="photo-preview" class="photo-preview hidden"></canvas><div id="camera-controls" class="camera-controls"><button id="capture-btn" class="btn btn-blue">Capture Photo</button></div><div id="preview-controls" class="camera-controls hidden"><button id="retake-btn" class="btn btn-gray">Retake</button><button id="submit-photo-btn" class="btn btn-green">Submit for Review</button></div></div>`;
+    const video = document.getElementById('camera-view'); const canvas = document.getElementById('photo-preview'); const captureBtn = document.getElementById('capture-btn'); const retakeBtn = document.getElementById('retake-btn'); const submitBtn = document.getElementById('submit-photo-btn'); const cameraControls = document.getElementById('camera-controls'); const previewControls = document.getElementById('preview-controls');
+    startCamera(video);
+    captureBtn.addEventListener('click', () => {
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        video.classList.add('hidden'); cameraControls.classList.add('hidden');
+        canvas.classList.remove('hidden'); previewControls.classList.remove('hidden');
+        stopCamera();
+    });
+    retakeBtn.addEventListener('click', () => {
+        video.classList.remove('hidden'); cameraControls.classList.remove('hidden');
+        canvas.classList.add('hidden'); previewControls.classList.add('hidden');
+        startCamera(video);
+    });
+    submitBtn.addEventListener('click', async () => {
+        try { await api.submitPhoto(user.student_id, task.id); notifications.success('Photo submitted for review!'); setTimeout(() => window.location.href = 'student_dashboard.html', 1500); } catch (error) { notifications.error(`Submission failed: ${error.message}`); }
+    });
+}
 
 // --- GLOBAL ACTION HANDLERS ---
 async function approveSubmission(submissionId) {
     if (!confirm('Approve this submission?')) return;
-    try { await api.approveSubmission(submissionId); notifications.success('Submission approved!'); refreshTeacherDashboard(session.getUser().teacher_id); } catch (error) { notifications.error(error.message); }
+    try { await api.approveSubmission(submissionId); notifications.success('Submission approved!'); await refreshTeacherDashboard(session.getUser().teacher_id); } catch (error) { notifications.error(error.message); }
 }
 async function rejectSubmission(submissionId) {
     if (!confirm('Reject this submission?')) return;
-    try { await api.rejectSubmission(submissionId); notifications.success('Submission rejected.'); refreshTeacherDashboard(session.getUser().teacher_id); } catch (error) { notifications.error(error.message); }
+    try { await api.rejectSubmission(submissionId); notifications.success('Submission rejected.'); await refreshTeacherDashboard(session.getUser().teacher_id); } catch (error) { notifications.error(error.message); }
 }
 
 // --- UTILITY FUNCTIONS ---
-function startQrScanner(elementId, callback) {
-    if (document.getElementById(elementId)) { qrScanner = new Html5Qrcode(elementId); qrScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, callback, () => { }).catch(err => console.error("QR Scanner failed to start.", err)); }
-}
+function startQrScanner(elementId, callback) { if (document.getElementById(elementId)) { qrScanner = new Html5Qrcode(elementId); qrScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, callback, () => {}).catch(err => console.error("QR Scanner failed to start.", err)); } }
 function stopQrScanner() { if (qrScanner && qrScanner.getState() === 2) { qrScanner.stop().catch(err => console.error("QR Scanner failed to stop.", err)); } }
-function startCamera(videoEl) { navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(stream => { cameraStream = stream; videoEl.srcObject = stream; }).catch(err => notifications.error("Could not access camera.")); }
-function stopCamera() { if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); } }
+function startCamera(videoEl) { navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(stream => { cameraStream = stream; videoEl.srcObject = stream; }).catch(err => { console.error(err); notifications.error("Could not access camera. Please check browser permissions."); }); }
+function stopCamera() { if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); cameraStream = null; } }
 window.addEventListener('beforeunload', stopCamera);
