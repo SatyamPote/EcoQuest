@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Quiz - EcoQuest</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header id="navbar-container"></header>
+    <main>
+        <h1>Create a New Quiz</h1>
+        <form id="create-quiz-form">
+            <div class="card form-container">
+                <h2>Quiz Details</h2>
+                <div class="form-group">
+                    <label for="quiz-title">Quiz Title</label>
+                    <input type="text" id="quiz-title" required placeholder="e.g., The Wonders of Recycling">
+                </div>
+                <div class="form-group">
+                    <label for="quiz-description">Description</label>
+                    <textarea id="quiz-description" rows="3" required placeholder="A short description for the students."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="quiz-points">Points Reward (for 100% correct)</label>
+                    <input type="number" id="quiz-points" required min="5" value="25">
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 2rem;">
+                <h2>Questions</h2>
+                <div id="questions-container">
+                    <!-- Dynamic questions will be added here -->
+                </div>
+                <button type="button" id="add-question-btn" class="btn btn-green">+ Add Question</button>
+            </div>
+            
+            <button type="submit" class="btn btn-blue btn-large">Create and Publish Quiz</button>
+        </form>
+    </main>
+    <div id="notification-container"></div>
+    <script src="components/notifications.js"></script>
+    <script src="components/navbar.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

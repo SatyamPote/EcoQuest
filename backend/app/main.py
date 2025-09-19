@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from typing import List, Dict
 import uuid
+from datetime import datetime
 
 from . import crud, models
 from .database import engine, get_db
@@ -38,6 +39,8 @@ class StudentCreate(BaseModel):
     class_name: str
 
 class StudentLogin(BaseModel): student_id_card: str
+
+class TaskCreate(BaseModel): title: str; description: str; points_reward: int; task_type: str
 
 class BadgeResponse(BaseModel):
     name: str
@@ -78,6 +81,22 @@ class SubmissionForTeacherResponse(BaseModel):
     task_title: str
     submission_data: str
     class Config: orm_mode = True
+
+
+
+class QuizQuestionCreate(BaseModel):
+    question_text: str
+    option_a: str
+    option_b: str
+    option_c: str
+    correct_answer: str
+
+class QuizCreate(BaseModel):
+    title: str
+    description: str
+    points_reward: int
+    questions: List[QuizQuestionCreate]
+
 
 # --- Teacher Registration Route ---
 @app.post("/api/teacher/register", status_code=status.HTTP_201_CREATED)
@@ -226,3 +245,12 @@ def get_teacher_roster(teacher_id: uuid.UUID, db: Session = Depends(get_db)):
     return students
 
 # ... (all other endpoints remain exactly the same) ...
+
+class SubmissionHistoryResponse(BaseModel): task_title: str; status: str; submitted_at: datetime; 
+class Config: orm_mode = True
+
+@app.post("/api/quiz", status_code=status.HTTP_201_CREATED)
+def create_full_quiz(quiz_data: QuizCreate, db: Session = Depends(get_db)):
+    # This calls a new function in crud.py that handles the complex transaction
+    new_quiz = crud.create_quiz_with_questions(db=db, quiz_data=quiz_data)
+    return new_quiz

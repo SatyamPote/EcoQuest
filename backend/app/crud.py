@@ -104,3 +104,30 @@ def add_initial_data(db: Session):
         q2 = models.QuizQuestion(task_id=t3.id, question_text="What is the best way to save water at home?", option_a="Take shorter showers", option_b="Only wash full loads of laundry", option_c="Both A and B", correct_answer="C")
         db.add_all([q1, q2])
         db.commit()
+
+def create_quiz_with_questions(db: Session, quiz_data):
+    # Step 1: Create the main EcoTask for the quiz
+    quiz_task = models.EcoTask(
+        title=quiz_data.title,
+        description=quiz_data.description,
+        points_reward=quiz_data.points_reward,
+        task_type='quiz'
+    )
+    db.add(quiz_task)
+    db.commit()
+    db.refresh(quiz_task)
+
+    # Step 2: Create each QuizQuestion and link it to the new quiz_task
+    for q in quiz_data.questions:
+        question = models.QuizQuestion(
+            task_id=quiz_task.id,
+            question_text=q.question_text,
+            option_a=q.option_a,
+            option_b=q.option_b,
+            option_c=q.option_c,
+            correct_answer=q.correct_answer.upper()
+        )
+        db.add(question)
+    
+    db.commit()
+    return quiz_task

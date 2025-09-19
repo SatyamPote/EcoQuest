@@ -53,6 +53,14 @@ const api = {
 // --- PAGE INITIALIZER ROUTER ---
 document.addEventListener('DOMContentLoaded', () => {
     const pagePath = window.location.pathname;
+    const pageInitializers = {
+        // ... (other initializers)
+        '/create_task.html': initCreateTaskPage,
+        '/create_quiz.html': initCreateQuizPage, // ADD THIS NEW PAGE
+    };
+    for (const path in pageInitializers) {
+        if (pagePath.endsWith(path)) { pageInitializers[path](); break; }
+    }
 
     if (pagePath.includes('teacher_login.html')) initTeacherLoginPage();
     else if (pagePath.includes('student_login.html')) initStudentLoginPage();
@@ -86,6 +94,98 @@ function initTeacherLoginPage() {
             window.location.href = 'teacher_dashboard.html';
         } catch (error) {
             alert(error.message); // MODIFIED: Replaced notifications
+        }
+    });
+}
+
+function initCreateQuizPage() {
+    const user = session.getUser();
+    if (!user || user.type !== 'teacher') return window.location.href = 'teacher_login.html';
+
+    const questionsContainer = document.getElementById('questions-container');
+    const addQuestionBtn = document.getElementById('add-question-btn');
+    const form = document.getElementById('create-quiz-form');
+    let questionCount = 0;
+
+    const addQuestionBlock = () => {
+        questionCount++;
+        const questionBlock = document.createElement('div');
+        questionBlock.className = 'question-block';
+        questionBlock.id = `question-block-${questionCount}`;
+        questionBlock.innerHTML = `
+            <h3>Question ${questionCount}</h3>
+            <button type="button" class="remove-question-btn" data-remove-id="${questionCount}">&times;</button>
+            <div class="form-group">
+                <label for="q-text-${questionCount}">Question Text</label>
+                <input type="text" id="q-text-${questionCount}" required>
+            </div>
+            <div class="form-group">
+                <label for="q-opt-a-${questionCount}">Option A</label>
+                <input type="text" id="q-opt-a-${questionCount}" required>
+            </div>
+            <div class="form-group">
+                <label for="q-opt-b-${questionCount}">Option B</label>
+                <input type="text" id="q-opt-b-${questionCount}" required>
+            </div>
+            <div class="form-group">
+                <label for="q-opt-c-${questionCount}">Option C</label>
+                <input type="text" id="q-opt-c-${questionCount}" required>
+            </div>
+            <div class="form-group correct-answer-group">
+                <label for="q-correct-${questionCount}">Correct Answer</label>
+                <select id="q-correct-${questionCount}">
+                    <option value="A">Option A</option>
+                    <option value="B">Option B</option>
+                    <option value="C">Option C</option>
+                </select>
+            </div>
+        `;
+        questionsContainer.appendChild(questionBlock);
+        
+        questionBlock.querySelector('.remove-question-btn').addEventListener('click', (e) => {
+            const idToRemove = e.target.dataset.removeId;
+            document.getElementById(`question-block-${idToRemove}`).remove();
+        });
+    };
+
+    addQuestionBtn.addEventListener('click', addQuestionBlock);
+    addQuestionBlock(); // Start with one question
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const questions = [];
+        const questionBlocks = document.querySelectorAll('.question-block');
+        if (questionBlocks.length === 0) {
+            return notifications.error('A quiz must have at least one question.');
+        }
+
+        for (let i = 1; i <= questionCount; i++) {
+            const block = document.getElementById(`question-block-${i}`);
+            if (block) { // Check if the block still exists
+                questions.push({
+                    question_text: document.getElementById(`q-text-${i}`).value,
+                    option_a: document.getElementById(`q-opt-a-${i}`).value,
+                    option_b: document.getElementById(`q-opt-b-${i}`).value,
+                    option_c: document.getElementById(`q-opt-c-${i}`).value,
+                    correct_answer: document.getElementById(`q-correct-${i}`).value
+                });
+            }
+        }
+        
+        const quizData = {
+            title: document.getElementById('quiz-title').value,
+            description: document.getElementById('quiz-description').value,
+            points_reward: parseInt(document.getElementById('quiz-points').value),
+            questions: questions
+        };
+
+        try {
+            await api.createFullQuiz(quizData);
+            notifications.success('New quiz created successfully!');
+            setTimeout(() => window.location.href = 'teacher_dashboard.html', 1500);
+        } catch (error) {
+            notifications.error(`Failed to create quiz: ${error.message}`);
         }
     });
 }
