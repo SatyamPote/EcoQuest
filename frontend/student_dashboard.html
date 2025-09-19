@@ -7,30 +7,16 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- The shared navigation bar will be loaded here -->
-    <header id="navbar-container"></header>
-
     <main>
-        <!-- The main profile and tasks will be loaded here -->
-        <div id="dashboard-content">
-            <div class="spinner"></div> <!-- Loading Spinner -->
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1>Dashboard</h1>
+            <button id="logout-btn" class="btn btn-red">Logout</button>
         </div>
-        
-        <!-- THIS IS THE NEW SUBMISSION HISTORY SECTION -->
-        <div id="history-container" class="card" style="margin-top: 2rem;">
-            <h2>My Submission History</h2>
-            <div id="history-content">
-                <div class="spinner"></div> <!-- Loading Spinner -->
-            </div>
+        <div id="dashboard-content">
+            <!-- Student dashboard content will be loaded here -->
+            <p>Loading your profile...</p>
         </div>
     </main>
-
-    <!-- The notification popups will be injected here -->
-    <div id="notification-container"></div>
-
-    <!-- Scripts -->
-    <script src="/components/notifications.js"></script>
-    <script src="/components/navbar.js"></script>
-    <script src="script.js"></script> <!-- This should be last -->
+    <script src="script.js"></script>
 </body>
 </html>

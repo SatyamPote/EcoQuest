@@ -42,19 +42,6 @@ def get_all_tasks(db: Session):
 def get_task_by_id(db: Session, task_id: uuid.UUID):
     return db.query(models.EcoTask).filter(models.EcoTask.id == task_id).first()
 
-# NEWLY ADDED: Function to create a task dynamically
-def create_eco_task(db: Session, title: str, description: str, points_reward: int, task_type: str):
-    db_task = models.EcoTask(
-        title=title,
-        description=description,
-        points_reward=points_reward,
-        task_type=task_type
-    )
-    db.add(db_task)
-    db.commit()
-    db.refresh(db_task)
-    return db_task
-
 def create_submission(db: Session, student_id: uuid.UUID, task_id: uuid.UUID, data: str, status: str):
     submission = models.StudentSubmission(student_id=student_id, task_id=task_id, submission_data=data, status=status)
     db.add(submission)
@@ -66,16 +53,10 @@ def get_pending_submissions_by_teacher(db: Session, teacher_id: uuid.UUID):
     return db.query(models.StudentSubmission).join(models.Student).filter(
         models.Student.teacher_id == teacher_id,
         models.StudentSubmission.status == 'pending'
-    ).order_by(models.StudentSubmission.submitted_at.desc()).all()
+    ).all()
 
 def get_submission_by_id(db: Session, submission_id: uuid.UUID):
     return db.query(models.StudentSubmission).filter(models.StudentSubmission.id == submission_id).first()
-
-# NEWLY ADDED: Function to get a student's full submission history
-def get_submissions_by_student(db: Session, student_id: uuid.UUID):
-    return db.query(models.StudentSubmission).filter(
-        models.StudentSubmission.student_id == student_id
-    ).order_by(models.StudentSubmission.submitted_at.desc()).all()
 
 def get_badge_by_name(db: Session, name: str):
     return db.query(models.Badge).filter(models.Badge.name == name).first()
@@ -106,11 +87,13 @@ def add_initial_data(db: Session):
         t2 = models.EcoTask(title="Tree Planting Hero", description="Plant a sapling in your neighborhood and upload a geotagged photo.", points_reward=100, task_type="photo_upload")
         t3 = models.EcoTask(title="Water Saver Quiz", description="Answer these questions about water conservation.", points_reward=25, task_type="quiz")
         
+        # --- NEWLY ADDED TASK ---
         t4 = models.EcoTask(
             title="Campus Nature Hunt", 
             description="Find the large oak tree near the library. A plaque on it contains a secret code. Enter it to prove you were there!",
             points_reward=75,
             task_type="secret_code",
+            # The secret code (e.g., "OAK-123") will be handled in the submission validation logic.
         )
         
         db.add_all([t1, t2, t3, t4])
