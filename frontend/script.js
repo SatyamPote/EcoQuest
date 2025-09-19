@@ -5,6 +5,10 @@ let qrScanner;
 let myChart = null; // Global variable for the chart instance
 let cameraStream = null; // Global variable to hold the camera stream
 
+
+console.log("--- EcoQuest Script Version 10.0 FINAL ---");
+
+
 // --- SESSION MANAGEMENT ---
 const session = {
     saveUser: (user) => localStorage.setItem('ecoquest_user', JSON.stringify(user)),
@@ -55,6 +59,7 @@ const api = {
 document.addEventListener('DOMContentLoaded', () => {
     const pagePath = window.location.pathname;
     const pageInitializers = {
+        '/index.html': () => {},
         '/teacher_login.html': initTeacherLoginPage,
         '/student_login.html': initStudentLoginPage,
         '/teacher_dashboard.html': initTeacherDashboardPage,
@@ -265,9 +270,16 @@ async function initLeaderboardPage() {
 // --- DYNAMIC DATA & RENDER FUNCTIONS ---
 async function refreshTeacherDashboard(teacherId) {
     try {
-        const [submissions, roster] = await Promise.all([api.getTeacherSubmissions(teacherId), api.getTeacherRoster(teacherId)]);
-        renderSubmissions(submissions); renderRoster(roster); renderAnalyticsChart(roster);
-    } catch (error) { notifications.error(`Could not refresh dashboard data: ${error.message}`); }
+        const [submissions, roster] = await Promise.all([
+            api.getTeacherSubmissions(teacherId),
+            api.getTeacherRoster(teacherId)
+        ]);
+        renderSubmissions(submissions);
+        renderRoster(roster);
+        renderAnalyticsChart(roster);
+    } catch (error) {
+        notifications.error(`Could not refresh dashboard data: ${error.message}`);
+    }
 }
 
 function renderStudentDashboard(container, profile, tasks) {
@@ -283,27 +295,59 @@ function renderStudentDashboard(container, profile, tasks) {
 }
 
 function renderSubmissions(submissions) {
-    const container = document.getElementById('submissions-container'); if(!container) return;
+    const container = document.getElementById('submissions-container');
+    if (!container) return;
     let content;
-    if (submissions.length === 0) content = '<h2>Pending Submissions</h2><p>No pending submissions. Great job!</p>';
-    else { const rows = submissions.map(s => `<tr><td>${s.student_name}</td><td>${s.task_title}</td><td class="submission-actions"><button class="btn btn-green" onclick="approveSubmission('${s.id}')">Approve</button><button class="btn btn-red" onclick="rejectSubmission('${s.id}')">Reject</button></td></tr>`).join(''); content = `<h2>Pending Submissions</h2><table class="list-table"><thead><tr><th>Student</th><th>Task</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table>`; }
+    if (submissions.length === 0) {
+        content = '<h2>Pending Submissions</h2><p>No pending submissions. Great job!</p>';
+    } else {
+        const tableRows = submissions.map(s => `<tr><td>${s.student_name}</td><td>${s.task_title}</td><td class="submission-actions"><button class="btn btn-green" onclick="approveSubmission('${s.id}')">Approve</button><button class="btn btn-red" onclick="rejectSubmission('${s.id}')">Reject</button></td></tr>`).join('');
+        content = `<h2>Pending Submissions</h2><table class="list-table"><thead><tr><th>Student</th><th>Task</th><th>Actions</th></tr></thead><tbody>${tableRows}</tbody></table>`;
+    }
+    // CORRECT USAGE: Replaces the entire content, preventing infinite growth.
     container.innerHTML = content;
 }
 
 function renderRoster(roster) {
-    const container = document.getElementById('roster-container'); if (!container) return;
+    const container = document.getElementById('roster-container');
+    if (!container) return;
     let content;
-    if (roster.length === 0) content = '<h2>Student Roster</h2><p>No students have been added yet.</p>';
-    else { const rows = roster.map(s => `<tr><td>${s.full_name}</td><td>${s.class_name}</td><td>${s.points}</td></tr>`).join(''); content = `<h2>Student Roster</h2><table class="list-table"><thead><tr><th>Name</th><th>Class</th><th>Points</th></tr></thead><tbody>${rows}</tbody></table>`; }
+    if (roster.length === 0) {
+        content = '<h2>Student Roster</h2><p>No students have been added yet.</p>';
+    } else {
+        const tableRows = roster.map(s => `<tr><td>${s.full_name}</td><td>${s.class_name}</td><td>${s.points}</td></tr>`).join('');
+        content = `<h2>Student Roster</h2><table class="list-table"><thead><tr><th>Name</th><th>Class</th><th>Points</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+    // CORRECT USAGE: Replaces the entire content, preventing infinite growth.
     container.innerHTML = content;
 }
 
 function renderAnalyticsChart(roster) {
-    const chartEl = document.getElementById('tasksChart'); if (!chartEl) return;
-    const ctx = chartEl.getContext('2d'); if (myChart) myChart.destroy();
+    const chartEl = document.getElementById('tasksChart');
+    if (!chartEl) return;
+    const ctx = chartEl.getContext('2d');
+    if (myChart) {
+        myChart.destroy(); // Destroy old chart instance before drawing a new one
+    }
     const dist = { 'Beginner (0-100)': 0, 'Intermediate (101-300)': 0, 'Advanced (>300)': 0 };
-    roster.forEach(s => { if (s.points <= 100) dist['Beginner (0-100)']++; else if (s.points <= 300) dist['Intermediate (101-300)']++; else dist['Advanced (>300)']++; });
-    myChart = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(dist), datasets: [{ data: Object.values(dist), backgroundColor: ['#34d399', '#fbbf24', '#60a5fa'], hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } } });
+    roster.forEach(s => {
+        if (s.points <= 100) dist['Beginner (0-100)']++;
+        else if (s.points <= 300) dist['Intermediate (101-300)']++;
+        else dist['Advanced (>300)']++;
+    });
+    myChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(dist),
+            datasets: [{
+                label: 'Student Point Distribution',
+                data: Object.values(dist),
+                backgroundColor: ['#34d399', '#fbbf24', '#60a5fa'],
+                hoverOffset: 4
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }
+    });
 }
 
 function renderSubmissionHistory(history) {
@@ -348,12 +392,26 @@ function setupCameraUI(container, task) {
 
 // --- GLOBAL ACTION HANDLERS ---
 async function approveSubmission(submissionId) {
-    if (!confirm('Approve this submission?')) return;
-    try { await api.approveSubmission(submissionId); notifications.success('Submission approved!'); await refreshTeacherDashboard(session.getUser().teacher_id); } catch (error) { notifications.error(error.message); }
+    if (!confirm('Are you sure you want to approve this submission?')) return;
+    try {
+        await api.approveSubmission(submissionId);
+        notifications.success('Submission approved!');
+        const user = session.getUser();
+        await refreshTeacherDashboard(user.teacher_id);
+    } catch (error) {
+        notifications.error(error.message);
+    }
 }
 async function rejectSubmission(submissionId) {
-    if (!confirm('Reject this submission?')) return;
-    try { await api.rejectSubmission(submissionId); notifications.success('Submission rejected.'); await refreshTeacherDashboard(session.getUser().teacher_id); } catch (error) { notifications.error(error.message); }
+    if (!confirm('Are you sure you want to reject this submission?')) return;
+    try {
+        await api.rejectSubmission(submissionId);
+        notifications.success('Submission rejected.');
+        const user = session.getUser();
+        await refreshTeacherDashboard(user.teacher_id);
+    } catch (error) {
+        notifications.error(error.message);
+    }
 }
 
 // --- UTILITY FUNCTIONS ---
