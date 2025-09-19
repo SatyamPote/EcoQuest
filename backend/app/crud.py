@@ -72,6 +72,7 @@ def get_leaderboard(db: Session, limit: int = 10):
 
 # --- Function to add default content ---
 def add_initial_data(db: Session):
+    # Add initial badges if none exist
     if not db.query(models.Badge).count():
         b1 = models.Badge(name="First Steps", description="Complete your first task!", icon_url="🦶")
         b2 = models.Badge(name="Eco Warrior", description="Get your first photo submission approved!", icon_url="🛡️")
@@ -79,13 +80,26 @@ def add_initial_data(db: Session):
         db.add_all([b1, b2, b3])
         db.commit()
 
+    # Add initial tasks if none exist
     if not db.query(models.EcoTask).count():
+        # Existing tasks
         t1 = models.EcoTask(title="Waste Segregation Champion", description="Upload a photo of your segregated wet and dry waste bins at home.", points_reward=50, task_type="photo_upload")
         t2 = models.EcoTask(title="Tree Planting Hero", description="Plant a sapling in your neighborhood and upload a geotagged photo.", points_reward=100, task_type="photo_upload")
         t3 = models.EcoTask(title="Water Saver Quiz", description="Answer these questions about water conservation.", points_reward=25, task_type="quiz")
-        db.add_all([t1, t2, t3])
+        
+        # --- NEWLY ADDED TASK ---
+        t4 = models.EcoTask(
+            title="Campus Nature Hunt", 
+            description="Find the large oak tree near the library. A plaque on it contains a secret code. Enter it to prove you were there!",
+            points_reward=75,
+            task_type="secret_code",
+            # The secret code (e.g., "OAK-123") will be handled in the submission validation logic.
+        )
+        
+        db.add_all([t1, t2, t3, t4])
         db.commit()
 
+        # Add quiz questions for the quiz task
         q1 = models.QuizQuestion(task_id=t3.id, question_text="How much of Earth's water is fresh water?", option_a="10%", option_b="3%", option_c="30%", correct_answer="B")
         q2 = models.QuizQuestion(task_id=t3.id, question_text="What is the best way to save water at home?", option_a="Take shorter showers", option_b="Only wash full loads of laundry", option_c="Both A and B", correct_answer="C")
         db.add_all([q1, q2])

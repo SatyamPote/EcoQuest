@@ -203,3 +203,26 @@ def reject_submission(submission_id: uuid.UUID, db: Session = Depends(get_db)):
 @app.get("/api/leaderboard", response_model=List[StudentProfileResponse])
 def get_leaderboard(db: Session = Depends(get_db)):
     return crud.get_leaderboard(db)
+
+
+# ... (imports and other setup code remain the same) ...
+
+# --- Pydantic Models ---
+# ADD THIS new response model for the teacher's student list
+class StudentForTeacherResponse(BaseModel):
+    id: uuid.UUID
+    full_name: str
+    class_name: str
+    points: int
+    class Config: orm_mode = True
+
+# ... (all other Pydantic models are the same) ...
+
+# --- ADD THIS NEW ENDPOINT ---
+@app.get("/api/teacher/{teacher_id}/roster", response_model=List[StudentForTeacherResponse])
+def get_teacher_roster(teacher_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Gets a list of all students registered by a specific teacher."""
+    students = crud.get_students_by_teacher(db, teacher_id=teacher_id)
+    return students
+
+# ... (all other endpoints remain exactly the same) ...
