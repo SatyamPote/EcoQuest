@@ -1,6 +1,7 @@
 // --- CONFIGURATION ---
-const API_BASE_URL = 'https://eco-quest-theta.vercel.app';
+const API_BASE_URL = 'http://127.https://eco-quest-:8000'; // Corrected IP
 let qrScanner;
+let myChart = null; // Global variable for the chart instance
 
 // --- SESSION MANAGEMENT ---
 const session = {
@@ -12,7 +13,7 @@ const session = {
     }
 };
 
-// --- API HELPERS ---
+// --- API HELPERS (with all new endpoints) ---
 const api = {
     async request(endpoint, options = {}) {
         const url = `${API_BASE_URL}${endpoint}`;
@@ -36,17 +37,24 @@ const api = {
             throw error;
         }
     },
+    // Auth
     loginTeacher: (email, password) => api.request('/api/teacher/login', { method: 'POST', body: { email, password } }),
     loginStudent: (student_id_card) => api.request('/api/student/login', { method: 'POST', body: { student_id_card } }),
+    // Profiles & Tasks
     getStudentProfile: (studentId) => api.request(`/api/student/${studentId}/profile`),
     getTasks: () => api.request('/api/tasks'),
+    createTask: (taskData) => api.request('/api/tasks', { method: 'POST', body: taskData }), // NEW
+    // Submissions
     submitQuiz: (studentId, taskId, answers) => api.request(`/api/student/${studentId}/submit/quiz/${taskId}`, { method: 'POST', body: { answers } }),
     submitPhoto: (studentId, taskId) => api.request(`/api/student/${studentId}/submit/photo/${taskId}`, { method: 'POST' }),
+    getStudentSubmissionHistory: (studentId) => api.request(`/api/student/${studentId}/submissions`), // NEW
+    // Teacher Actions
     getTeacherSubmissions: (teacherId) => api.request(`/api/teacher/${teacherId}/submissions`),
     getTeacherRoster: (teacherId) => api.request(`/api/teacher/${teacherId}/roster`),
     addStudent: (teacherId, fullName, className, studentIdCard) => api.request(`/api/teacher/${teacherId}/add-student`, { method: 'POST', body: { full_name: fullName, class_name: className, student_id_card: studentIdCard } }),
     approveSubmission: (submissionId) => api.request(`/api/teacher/submissions/${submissionId}/approve`, { method: 'POST' }),
     rejectSubmission: (submissionId) => api.request(`/api/teacher/submissions/${submissionId}/reject`, { method: 'POST' }),
+    // Gamification
     getLeaderboard: () => api.request('/api/leaderboard'),
 };
 
@@ -62,30 +70,210 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (pagePath.includes('task_detail.html')) initTaskDetailPage();
     else if (pagePath.includes('quiz.html')) initQuizPage();
     else if (pagePath.includes('leaderboard.html')) initLeaderboardPage();
+    else if (pagePath.includes('create_task.html')) initCreateTaskPage(); // NEW PAGE
 
-    // ADDED BACK: Logout button functionality
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) logoutBtn.onclick = () => session.logout();
 });
 
 
-// --- INITIALIZATION FUNCTIONS FOR EACH PAGE ---
+// --- INITIALIZATION FUNCTIONS ---
 
+// Login and other simple pages remain the same as the stable version
+function initTeacherLoginPage() { /* ... unchanged ... */ }
+function initStudentLoginPage() { /* ... unchanged ... */ }
+function initAddStudentPage() { /* ... unchanged ... */ }
+function initTaskDetailPage() { /* ... unchanged ... */ }
+function initQuizPage() { /* ... unchanged ... */ }
+function initLeaderboardPage() { /* ... unchanged ... */ }
+
+// NEW: Page initializer for the create task form
+function initCreateTaskPage() {
+    const user = session.getUser();
+    if (!user || user.type !== 'teacher') return window.location.href = 'teacher_login.html';
+    
+    const form = document.getElementById('create-task-form');
+    if (!form) return;
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const taskData = {
+            title: document.getElementById('task-title').value,
+            description: document.getElementById('task-description').value,
+            points_reward: parseInt(document.getElementById('task-points').value),
+            task_type: document.getElementById('task-type').value
+        };
+
+        try {
+            await api.createTask(taskData);
+            alert('New task created successfully!');
+            setTimeout(() => window.location.href = 'teacher_dashboard.html', 1500);
+        } catch (error) {
+            alert(`Failed to create task: ${error.message}`);
+        }
+    });
+}
+
+// UPDATED: Teacher dashboard now uses a refresh pattern
+async function initTeacherDashboardPage() {
+    const user = session.getUser();
+    if (!user || user.type !== 'teacher') return window.location.href = 'teacher_login.html';
+    
+    const teacherName = document.getElementById('teacher-name');
+    if (teacherName) teacherName.textContent = user.full_name;
+    
+    // Initial data load
+    refreshTeacherDashboard(user.teacher_id);
+}
+
+// UPDATED: Student dashboard now fetches and renders submission history
+async function initStudentDashboardPage() {
+    const user = session.getUser();
+    if (!user || user.type !== 'student') return window.location.href = 'student_login.html';
+    
+    const container = document.getElementById('dashboard-content');
+    try {
+        const [profile, tasks, history] = await Promise.all([
+            api.getStudentProfile(user.student_id),
+            api.getTasks(),
+            api.getStudentSubmissionHistory(user.student_id) // Fetch history
+        ]);
+        renderStudentDashboard(container, profile, tasks);
+        renderSubmissionHistory(history); // Render history
+    } catch (error) {
+        alert(`Could not load dashboard data: ${error.message}`);
+        if(container) container.innerHTML = `<p class="error-message">Could not load dashboard.</p>`;
+    }
+}
+
+
+// --- DYNAMIC DATA HANDLING & RE-RENDERING ---
+
+// NEW: Refreshes all data on the teacher dashboard
+async function refreshTeacherDashboard(teacherId) {
+    try {
+        const [submissions, roster] = await Promise.all([
+            api.getTeacherSubmissions(teacherId),
+            api.getTeacherRoster(teacherId)
+        ]);
+        renderSubmissions(submissions);
+        renderRoster(roster);
+        renderAnalyticsChart(roster);
+    } catch (error) {
+        alert(`Could not refresh dashboard data: ${error.message}`);
+    }
+}
+
+// --- RENDER FUNCTIONS ---
+
+function renderStudentDashboard(container, profile, tasks) { /* ... unchanged ... */ }
+function renderSubmissions(submissions) { /* ... unchanged ... */ }
+function renderRoster(roster) { /* ... unchanged ... */ }
+
+// NEW: Renders the student's submission history table
+function renderSubmissionHistory(history) {
+    const container = document.getElementById('history-content');
+    if (!container) return;
+    
+    if (history.length === 0) {
+        container.innerHTML = '<p>You haven\'t submitted any tasks yet. Get started!</p>';
+        return;
+    }
+    
+    const statusBadges = {
+        approved: '<span class="status-badge status-approved">Approved</span>',
+        pending: '<span class="status-badge status-pending">Pending</span>',
+        rejected: '<span class="status-badge status-rejected">Rejected</span>',
+    };
+
+    const tableHTML = `<table class="list-table"><thead><tr><th>Task</th><th>Submitted</th><th>Status</th></tr></thead><tbody>
+        ${history.map(s => `<tr><td>${s.task_title}</td><td>${new Date(s.submitted_at).toLocaleDateString()}</td><td>${statusBadges[s.status] || s.status}</td></tr>`).join('')}
+    </tbody></table>`;
+    container.innerHTML = tableHTML;
+}
+
+// UPDATED: Chart rendering now destroys the old instance first
+function renderAnalyticsChart(roster) {
+    const chartEl = document.getElementById('tasksChart');
+    if (!chartEl) return;
+    const ctx = chartEl.getContext('2d');
+
+    // Destroy the old chart before drawing a new one to prevent conflicts
+    if (myChart) {
+        myChart.destroy();
+    }
+
+    const taskDistribution = { 'Low Points (0-100)': 0, 'Medium (101-300)': 0, 'High (>300)': 0 };
+    roster.forEach(s => {
+        if (s.points <= 100) taskDistribution['Low Points (0-100)']++;
+        else if (s.points <= 300) taskDistribution['Medium (101-300)']++;
+        else taskDistribution['High (>300)']++;
+    });
+    
+    // Store the new chart instance globally
+    myChart = new Chart(ctx, { 
+        type: 'doughnut', 
+        data: { 
+            labels: Object.keys(taskDistribution), 
+            datasets: [{ 
+                label: 'Student Point Distribution', 
+                data: Object.values(taskDistribution), 
+                backgroundColor: ['#34d399', '#fbbf24', '#60a5fa'], 
+                hoverOffset: 4 
+            }] 
+        } 
+    });
+}
+
+// --- GLOBAL ACTION HANDLERS (UPDATED FOR DYNAMIC REFRESH) ---
+
+async function approveSubmission(submissionId) {
+    if (!confirm('Are you sure you want to approve this submission?')) return;
+    try {
+        await api.approveSubmission(submissionId);
+        alert('Submission approved!');
+        const user = session.getUser();
+        if (user && user.type === 'teacher') {
+            refreshTeacherDashboard(user.teacher_id); // Re-fetch and re-render
+        }
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+async function rejectSubmission(submissionId) {
+    if (!confirm('Are you sure you want to reject this submission?')) return;
+    try {
+        await api.rejectSubmission(submissionId);
+        alert('Submission rejected.');
+        const user = session.getUser();
+        if (user && user.type === 'teacher') {
+            refreshTeacherDashboard(user.teacher_id); // Re-fetch and re-render
+        }
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+// --- QR SCANNER UTILS ---
+function startQrScanner(elementId, callback) { /* ... unchanged ... */ }
+function stopQrScanner() { /* ... unchanged ... */ }
+
+
+// --- UNCHANGED FUNCTIONS (for completeness) ---
 function initTeacherLoginPage() {
     const form = document.getElementById('teacher-login-form');
     if (!form) return;
-    
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = document.getElementById('teacher-email').value;
         const password = document.getElementById('teacher-password').value;
-        
         try {
             const data = await api.loginTeacher(email, password);
             session.saveUser({ type: 'teacher', ...data });
             window.location.href = 'teacher_dashboard.html';
         } catch (error) {
-            alert(error.message); // MODIFIED: Replaced notifications
+            alert(error.message);
         }
     });
 }
@@ -98,53 +286,15 @@ function initStudentLoginPage() {
             session.saveUser({ type: 'student', ...data });
             window.location.href = 'student_dashboard.html';
         } catch (error) {
-            alert(error.message); // MODIFIED: Replaced notifications
+            alert(error.message);
             setTimeout(() => { startQrScanner('qr-reader',_=>{}); }, 3000);
         }
     });
 }
 
-async function initTeacherDashboardPage() {
-    const user = session.getUser();
-    if (!user || user.type !== 'teacher') return window.location.href = 'teacher_login.html';
-    
-    const teacherName = document.getElementById('teacher-name');
-    if(teacherName) teacherName.textContent = user.full_name;
-    
-    try {
-        const [submissions, roster] = await Promise.all([
-            api.getTeacherSubmissions(user.teacher_id),
-            api.getTeacherRoster(user.teacher_id)
-        ]);
-        renderSubmissions(submissions);
-        renderRoster(roster);
-        renderAnalyticsChart(roster);
-    } catch (error) {
-        alert(`Could not load dashboard data: ${error.message}`); // MODIFIED: Replaced notifications
-    }
-}
-
-async function initStudentDashboardPage() {
-    const user = session.getUser();
-    if (!user || user.type !== 'student') return window.location.href = 'student_login.html';
-    const container = document.getElementById('dashboard-content');
-    
-    try {
-        const [profile, tasks] = await Promise.all([
-            api.getStudentProfile(user.student_id),
-            api.getTasks()
-        ]);
-        renderStudentDashboard(container, profile, tasks);
-    } catch (error) {
-        alert(`Could not load dashboard data: ${error.message}`); // MODIFIED: Replaced notifications
-        if(container) container.innerHTML = `<p class="error-message">Could not load dashboard. Please try logging in again.</p>`;
-    }
-}
-
 function initAddStudentPage() {
     const user = session.getUser();
     if (!user || user.type !== 'teacher') return window.location.href = 'teacher_login.html';
-
     startQrScanner('qr-reader', (decodedText) => {
         stopQrScanner();
         document.getElementById('scanned-student-id').value = decodedText;
@@ -153,23 +303,20 @@ function initAddStudentPage() {
         feedbackDiv.style.display = 'block';
         document.getElementById('qr-reader').style.display = 'none';
     });
-    
     const form = document.getElementById('add-student-form');
     if (!form) return;
-
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const studentIdCard = document.getElementById('scanned-student-id').value;
         const fullName = document.getElementById('new-student-name').value;
         const className = document.getElementById('new-student-class').value;
-        if (!studentIdCard) return alert('Please scan the student ID card first.'); // MODIFIED: Replaced notifications
-
+        if (!studentIdCard) return alert('Please scan the student ID card first.');
         try {
             await api.addStudent(user.teacher_id, fullName, className, studentIdCard);
-            alert(`Student "${fullName}" was added!`); // MODIFIED: Replaced notifications
+            alert(`Student "${fullName}" was added!`);
             setTimeout(() => window.location.href = 'teacher_dashboard.html', 1500);
         } catch (error) {
-            alert(error.message); // MODIFIED: Replaced notifications
+            alert(error.message);
         }
     });
 }
@@ -177,59 +324,51 @@ function initAddStudentPage() {
 async function initTaskDetailPage() {
     const user = session.getUser();
     if (!user || user.type !== 'student') return window.location.href = 'student_login.html';
-    
     const taskId = new URLSearchParams(window.location.search).get('id');
     const container = document.getElementById('task-content');
     if (!taskId) return container.innerHTML = '<p class="error-message">Task ID not found.</p>';
-
     try {
         const tasks = await api.getTasks();
         const task = tasks.find(t => t.id === taskId);
         if (!task) return container.innerHTML = '<p class="error-message">Task not found.</p>';
-
         if (task.task_type === "photo_upload") {
             container.innerHTML = `<h2>${task.title}</h2><p>${task.description}</p><strong class="task-card-points">Reward: ${task.points_reward} Points</strong><div style="margin-top: 1.5rem;"><button id="submit-btn" class="btn btn-green">Submit for Review</button></div>`;
             document.getElementById('submit-btn').onclick = async () => {
                 await api.submitPhoto(user.student_id, taskId);
-                alert('Task submitted for review!'); // MODIFIED: Replaced notifications
+                alert('Task submitted for review!');
                 setTimeout(() => window.location.href = 'student_dashboard.html', 1500);
             };
         } else if (task.task_type === "secret_code") {
             container.innerHTML = `<h2>${task.title}</h2><p>${task.description}</p><div class="form-group"><label for="secret-code">Enter Secret Code</label><input type="text" id="secret-code"></div><button id="submit-btn" class="btn btn-blue">Verify Code</button>`;
             document.getElementById('submit-btn').onclick = () => {
                 const code = document.getElementById('secret-code').value;
-                if (code.toUpperCase() === 'OAK-123') { // Demo secret code
+                if (code.toUpperCase() === 'OAK-123') {
                     api.submitPhoto(user.student_id, taskId).then(() => {
-                        alert('Correct Code! Task submitted!'); // MODIFIED: Replaced notifications
+                        alert('Correct Code! Task submitted!');
                         setTimeout(() => window.location.href = 'student_dashboard.html', 1500);
                     });
                 } else {
-                    alert('Incorrect code. Please try again.'); // MODIFIED: Replaced notifications
+                    alert('Incorrect code. Please try again.');
                 }
             };
         }
     } catch (error) {
-        alert(error.message); // MODIFIED: Replaced notifications
+        alert(error.message);
     }
 }
 
-// RE-IMPLEMENTED: This function is now complete.
 async function initQuizPage() {
     const user = session.getUser();
     if (!user || user.type !== 'student') return window.location.href = 'student_login.html';
-
     const taskId = new URLSearchParams(window.location.search).get('id');
     const quizTitle = document.getElementById('quiz-title');
     const form = document.getElementById('quiz-form');
     if (!quizTitle || !form) return;
-    
     if (!taskId) return quizTitle.textContent = 'Error: Quiz ID not found.';
-
     try {
         const tasks = await api.getTasks();
         const task = tasks.find(t => t.id === taskId);
         if (!task || task.task_type !== 'quiz') return quizTitle.textContent = 'Error: Quiz not found.';
-
         quizTitle.textContent = task.title;
         const questionsHTML = task.questions.map((q, index) => `
             <div class="quiz-question card"><p><strong>Question ${index + 1}: ${q.question_text}</strong></p>
@@ -239,7 +378,6 @@ async function initQuizPage() {
                 <input type="radio" id="q${q.id}_c" name="q_${q.id}" value="C"><label for="q${q.id}_c">C) ${q.option_c}</label>
             </div></div>`).join('');
         form.innerHTML = questionsHTML + '<button type="submit" class="btn btn-blue">Submit Answers</button>';
-
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const answers = {};
@@ -247,11 +385,9 @@ async function initQuizPage() {
                 const selected = form.querySelector(`input[name="q_${q.id}"]:checked`);
                 if (selected) answers[q.id] = selected.value;
             });
-
             if (Object.keys(answers).length !== task.questions.length) {
                 return alert('Please answer all questions before submitting.');
             }
-
             try {
                 const result = await api.submitQuiz(user.student_id, taskId, answers);
                 alert(result.message);
@@ -268,7 +404,6 @@ async function initQuizPage() {
 async function initLeaderboardPage() {
     const container = document.getElementById('leaderboard-content');
     if (!container) return;
-
     try {
         const leaderboard = await api.getLeaderboard();
         const tableHTML = `<table class="list-table"><thead><tr><th>Rank</th><th>Name</th><th>Points</th></tr></thead><tbody>
@@ -276,13 +411,11 @@ async function initLeaderboardPage() {
         </tbody></table>`;
         container.innerHTML = tableHTML;
     } catch (error) {
-        alert(error.message); // MODIFIED: Replaced notifications
+        alert(error.message);
         container.innerHTML = `<p class="error-message">Could not load leaderboard.</p>`;
     }
 }
 
-
-// --- RENDER FUNCTIONS ---
 function renderStudentDashboard(container, profile, tasks) {
     if (!container) return;
     const getPet = (points) => {
@@ -315,43 +448,6 @@ function renderRoster(roster) {
     container.innerHTML = '<h2>Student Roster</h2>' + tableHTML;
 }
 
-function renderAnalyticsChart(roster) {
-    const chartEl = document.getElementById('tasksChart');
-    if (!chartEl) return;
-
-    const taskDistribution = { 'Low Points (0-100)': 0, 'Medium (101-300)': 0, 'High (>300)': 0 };
-    roster.forEach(s => {
-        if (s.points <= 100) taskDistribution['Low Points (0-100)']++;
-        else if (s.points <= 300) taskDistribution['Medium (101-300)']++;
-        else taskDistribution['High (>300)']++;
-    });
-    new Chart(chartEl.getContext('2d'), { type: 'doughnut', data: { labels: Object.keys(taskDistribution), datasets: [{ label: 'Student Point Distribution', data: Object.values(taskDistribution), backgroundColor: ['#34d399', '#fbbf24', '#60a5fa'], hoverOffset: 4 }] } });
-}
-
-// --- GLOBAL ACTION HANDLERS ---
-async function approveSubmission(submissionId) {
-    if (!confirm('Are you sure you want to approve this submission?')) return;
-    try {
-        await api.approveSubmission(submissionId);
-        alert('Submission approved!'); // MODIFIED: Replaced notifications
-        setTimeout(() => location.reload(), 1000);
-    } catch (error) {
-        alert(error.message); // MODIFIED: Replaced notifications
-    }
-}
-
-async function rejectSubmission(submissionId) {
-    if (!confirm('Are you sure you want to reject this submission?')) return;
-    try {
-        await api.rejectSubmission(submissionId);
-        alert('Submission rejected.'); // MODIFIED: Replaced notifications
-        setTimeout(() => location.reload(), 1000);
-    } catch (error) {
-        alert(error.message); // MODIFIED: Replaced notifications
-    }
-}
-
-// --- QR SCANNER UTILS ---
 function startQrScanner(elementId, callback) {
     if (document.getElementById(elementId)) {
         qrScanner = new Html5Qrcode(elementId);
@@ -360,7 +456,7 @@ function startQrScanner(elementId, callback) {
 }
 
 function stopQrScanner() {
-    if (qrScanner && qrScanner.getState() === 2) { // 2 is SCANNING state
+    if (qrScanner && qrScanner.getState() === 2) { 
         qrScanner.stop().catch(err => console.error("QR Scanner failed to stop.", err));
     }
 }

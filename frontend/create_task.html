@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Task - EcoQuest</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header id="navbar-container"></header>
+    <main>
+        <h1>Create a New Eco-Mission</h1>
+        <div class="card form-container">
+            <form id="create-task-form">
+                <div class="form-group">
+                    <label for="task-title">Task Title</label>
+                    <input type="text" id="task-title" required placeholder="e.g., Campus Recycling Drive">
+                </div>
+                <div class="form-group">
+                    <label for="task-description">Description</label>
+                    <textarea id="task-description" rows="4" required placeholder="Explain what students need to do."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="task-points">Points Reward</label>
+                    <input type="number" id="task-points" required min="5" value="50">
+                </div>
+                <div class="form-group">
+                    <label for="task-type">Task Type</label>
+                    <select id="task-type">
+                        <option value="photo_upload">Photo Upload</option>
+                        <option value="secret_code">Secret Code</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-blue" style="width: 100%;">Create Task</button>
+            </form>
+        </div>
+    </main>
+    <div id="notification-container"></div>
+    <script src="components/notifications.js"></script>
+    <script src="components/navbar.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

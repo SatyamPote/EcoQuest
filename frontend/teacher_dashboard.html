@@ -1,16 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-T">
+    <meta charset="UTF-8"> <!-- Corrected from UTF-T to UTF-8 -->
     <title>Teacher Dashboard - EcoQuest</title>
     <link rel="stylesheet" href="/frontend/style.css">
     <!-- ADD Chart.js library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <header id="navbar-container"></header> <!-- ADD THIS -->
+    <header id="navbar-container"></header>
     <main>
-        <h1>Teacher Dashboard</h1>
+        <!-- This container holds the heading and the new button -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <h1>Teacher Dashboard</h1>
+            <!-- THIS IS THE NEWLY ADDED BUTTON -->
+            <a href="create_task.html" class="btn btn-green">+ Create New Task</a>
+        </div>
+        
         <p>Welcome, <span id="teacher-name"></span>!</p>
         
         <div class="dashboard-grid">
@@ -29,9 +35,9 @@
             <div class="spinner"></div>
         </div>
     </main>
-    <div id="notification-container"></div> <!-- ADD THIS -->
-    <script src="/components/notifications.js"></script> <!-- ADD THIS -->
-    <script src="/components/navbar.js"></script> <!-- ADD THIS -->
+    <div id="notification-container"></div>
+    <script src="/components/notifications.js"></script>
+    <script src="/components/navbar.js"></script>
     <script src="script.js"></script> <!-- This should be last -->
 </body>
 </html>
