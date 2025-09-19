@@ -1,5 +1,5 @@
 // --- CONFIGURATION ---
-const API_BASE_URL = 'https://eco-quest-theta.vercel.app/'; // Corrected URL
+const API_BASE_URL = 'http://127.https://eco-quest-:8000'; // Corrected IP
 let qrScanner;
 let myChart = null; // Global variable for the chart instance
 
@@ -13,7 +13,7 @@ const session = {
     }
 };
 
-// --- API HELPERS ---
+// --- API HELPERS (with all new endpoints) ---
 const api = {
     async request(endpoint, options = {}) {
         const url = `${API_BASE_URL}${endpoint}`;
@@ -34,25 +34,29 @@ const api = {
             return;
         } catch (error) {
             console.error('API Request Error:', error);
-            throw error; // Propagate error for UI feedback (e.g., "Failed to fetch")
+            throw error;
         }
     },
+    // Auth
     loginTeacher: (email, password) => api.request('/api/teacher/login', { method: 'POST', body: { email, password } }),
     loginStudent: (student_id_card) => api.request('/api/student/login', { method: 'POST', body: { student_id_card } }),
+    // Profiles & Tasks
     getStudentProfile: (studentId) => api.request(`/api/student/${studentId}/profile`),
     getTasks: () => api.request('/api/tasks'),
-    createTask: (taskData) => api.request('/api/tasks', { method: 'POST', body: taskData }),
-    getStudentSubmissionHistory: (studentId) => api.request(`/api/student/${studentId}/submissions`),
+    createTask: (taskData) => api.request('/api/tasks', { method: 'POST', body: taskData }), // NEW
+    // Submissions
     submitQuiz: (studentId, taskId, answers) => api.request(`/api/student/${studentId}/submit/quiz/${taskId}`, { method: 'POST', body: { answers } }),
     submitPhoto: (studentId, taskId) => api.request(`/api/student/${studentId}/submit/photo/${taskId}`, { method: 'POST' }),
+    getStudentSubmissionHistory: (studentId) => api.request(`/api/student/${studentId}/submissions`), // NEW
+    // Teacher Actions
     getTeacherSubmissions: (teacherId) => api.request(`/api/teacher/${teacherId}/submissions`),
     getTeacherRoster: (teacherId) => api.request(`/api/teacher/${teacherId}/roster`),
     addStudent: (teacherId, fullName, className, studentIdCard) => api.request(`/api/teacher/${teacherId}/add-student`, { method: 'POST', body: { full_name: fullName, class_name: className, student_id_card: studentIdCard } }),
     approveSubmission: (submissionId) => api.request(`/api/teacher/submissions/${submissionId}/approve`, { method: 'POST' }),
     rejectSubmission: (submissionId) => api.request(`/api/teacher/submissions/${submissionId}/reject`, { method: 'POST' }),
+    // Gamification
     getLeaderboard: () => api.request('/api/leaderboard'),
 };
-
 
 // --- PAGE INITIALIZER ROUTER ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -66,68 +70,24 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (pagePath.includes('task_detail.html')) initTaskDetailPage();
     else if (pagePath.includes('quiz.html')) initQuizPage();
     else if (pagePath.includes('leaderboard.html')) initLeaderboardPage();
-    else if (pagePath.includes('create_task.html')) initCreateTaskPage();
+    else if (pagePath.includes('create_task.html')) initCreateTaskPage(); // NEW PAGE
 
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) logoutBtn.onclick = () => session.logout();
 });
 
+
 // --- INITIALIZATION FUNCTIONS ---
 
-function initTeacherLoginPage() {
-    const form = document.getElementById('teacher-login-form');
-    if (!form) return;
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        try {
-            const data = await api.loginTeacher(document.getElementById('teacher-email').value, document.getElementById('teacher-password').value);
-            session.saveUser({ type: 'teacher', ...data });
-            window.location.href = 'teacher_dashboard.html';
-        } catch (error) {
-            alert(error.message); // MODIFIED
-        }
-    });
-}
+// Login and other simple pages remain the same as the stable version
+function initTeacherLoginPage() { /* ... unchanged ... */ }
+function initStudentLoginPage() { /* ... unchanged ... */ }
+function initAddStudentPage() { /* ... unchanged ... */ }
+function initTaskDetailPage() { /* ... unchanged ... */ }
+function initQuizPage() { /* ... unchanged ... */ }
+function initLeaderboardPage() { /* ... unchanged ... */ }
 
-function initStudentLoginPage() {
-    startQrScanner('qr-reader', async (decodedText) => {
-        try {
-            stopQrScanner();
-            const data = await api.loginStudent(decodedText);
-            session.saveUser({ type: 'student', ...data });
-            window.location.href = 'student_dashboard.html';
-        } catch (error) {
-            alert(error.message);
-            setTimeout(() => { startQrScanner('qr-reader',_=>{}); }, 3000);
-        }
-    });
-}
-
-async function initTeacherDashboardPage() {
-    const user = session.getUser();
-    if (!user || user.type !== 'teacher') return window.location.href = 'teacher_login.html';
-    const teacherName = document.getElementById('teacher-name');
-    if(teacherName) teacherName.textContent = user.full_name;
-    await refreshTeacherDashboard(user.teacher_id);
-}
-
-async function initStudentDashboardPage() {
-    const user = session.getUser();
-    if (!user || user.type !== 'student') return window.location.href = 'student_login.html';
-    const container = document.getElementById('dashboard-content');
-    try {
-        const [profile, tasks, history] = await Promise.all([
-            api.getStudentProfile(user.student_id),
-            api.getTasks(),
-            api.getStudentSubmissionHistory(user.student_id)
-        ]);
-        renderStudentDashboard(container, profile, tasks);
-        renderSubmissionHistory(history);
-    } catch (error) {
-        alert(`Could not load dashboard data: ${error.message}`); // MODIFIED
-    }
-}
-
+// NEW: Page initializer for the create task form
 function initCreateTaskPage() {
     const user = session.getUser();
     if (!user || user.type !== 'teacher') return window.location.href = 'teacher_login.html';
@@ -146,10 +106,188 @@ function initCreateTaskPage() {
 
         try {
             await api.createTask(taskData);
-            alert('New task created successfully!'); // MODIFIED
+            alert('New task created successfully!');
             setTimeout(() => window.location.href = 'teacher_dashboard.html', 1500);
         } catch (error) {
-            alert(`Failed to create task: ${error.message}`); // MODIFIED
+            alert(`Failed to create task: ${error.message}`);
+        }
+    });
+}
+
+// UPDATED: Teacher dashboard now uses a refresh pattern
+async function initTeacherDashboardPage() {
+    const user = session.getUser();
+    if (!user || user.type !== 'teacher') return window.location.href = 'teacher_login.html';
+    
+    const teacherName = document.getElementById('teacher-name');
+    if (teacherName) teacherName.textContent = user.full_name;
+    
+    // Initial data load
+    refreshTeacherDashboard(user.teacher_id);
+}
+
+// UPDATED: Student dashboard now fetches and renders submission history
+async function initStudentDashboardPage() {
+    const user = session.getUser();
+    if (!user || user.type !== 'student') return window.location.href = 'student_login.html';
+    
+    const container = document.getElementById('dashboard-content');
+    try {
+        const [profile, tasks, history] = await Promise.all([
+            api.getStudentProfile(user.student_id),
+            api.getTasks(),
+            api.getStudentSubmissionHistory(user.student_id) // Fetch history
+        ]);
+        renderStudentDashboard(container, profile, tasks);
+        renderSubmissionHistory(history); // Render history
+    } catch (error) {
+        alert(`Could not load dashboard data: ${error.message}`);
+        if(container) container.innerHTML = `<p class="error-message">Could not load dashboard.</p>`;
+    }
+}
+
+
+// --- DYNAMIC DATA HANDLING & RE-RENDERING ---
+
+// NEW: Refreshes all data on the teacher dashboard
+async function refreshTeacherDashboard(teacherId) {
+    try {
+        const [submissions, roster] = await Promise.all([
+            api.getTeacherSubmissions(teacherId),
+            api.getTeacherRoster(teacherId)
+        ]);
+        renderSubmissions(submissions);
+        renderRoster(roster);
+        renderAnalyticsChart(roster);
+    } catch (error) {
+        alert(`Could not refresh dashboard data: ${error.message}`);
+    }
+}
+
+// --- RENDER FUNCTIONS ---
+
+function renderStudentDashboard(container, profile, tasks) { /* ... unchanged ... */ }
+function renderSubmissions(submissions) { /* ... unchanged ... */ }
+function renderRoster(roster) { /* ... unchanged ... */ }
+
+// NEW: Renders the student's submission history table
+function renderSubmissionHistory(history) {
+    const container = document.getElementById('history-content');
+    if (!container) return;
+    
+    if (history.length === 0) {
+        container.innerHTML = '<p>You haven\'t submitted any tasks yet. Get started!</p>';
+        return;
+    }
+    
+    const statusBadges = {
+        approved: '<span class="status-badge status-approved">Approved</span>',
+        pending: '<span class="status-badge status-pending">Pending</span>',
+        rejected: '<span class="status-badge status-rejected">Rejected</span>',
+    };
+
+    const tableHTML = `<table class="list-table"><thead><tr><th>Task</th><th>Submitted</th><th>Status</th></tr></thead><tbody>
+        ${history.map(s => `<tr><td>${s.task_title}</td><td>${new Date(s.submitted_at).toLocaleDateString()}</td><td>${statusBadges[s.status] || s.status}</td></tr>`).join('')}
+    </tbody></table>`;
+    container.innerHTML = tableHTML;
+}
+
+// UPDATED: Chart rendering now destroys the old instance first
+function renderAnalyticsChart(roster) {
+    const chartEl = document.getElementById('tasksChart');
+    if (!chartEl) return;
+    const ctx = chartEl.getContext('2d');
+
+    // Destroy the old chart before drawing a new one to prevent conflicts
+    if (myChart) {
+        myChart.destroy();
+    }
+
+    const taskDistribution = { 'Low Points (0-100)': 0, 'Medium (101-300)': 0, 'High (>300)': 0 };
+    roster.forEach(s => {
+        if (s.points <= 100) taskDistribution['Low Points (0-100)']++;
+        else if (s.points <= 300) taskDistribution['Medium (101-300)']++;
+        else taskDistribution['High (>300)']++;
+    });
+    
+    // Store the new chart instance globally
+    myChart = new Chart(ctx, { 
+        type: 'doughnut', 
+        data: { 
+            labels: Object.keys(taskDistribution), 
+            datasets: [{ 
+                label: 'Student Point Distribution', 
+                data: Object.values(taskDistribution), 
+                backgroundColor: ['#34d399', '#fbbf24', '#60a5fa'], 
+                hoverOffset: 4 
+            }] 
+        } 
+    });
+}
+
+// --- GLOBAL ACTION HANDLERS (UPDATED FOR DYNAMIC REFRESH) ---
+
+async function approveSubmission(submissionId) {
+    if (!confirm('Are you sure you want to approve this submission?')) return;
+    try {
+        await api.approveSubmission(submissionId);
+        alert('Submission approved!');
+        const user = session.getUser();
+        if (user && user.type === 'teacher') {
+            refreshTeacherDashboard(user.teacher_id); // Re-fetch and re-render
+        }
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+async function rejectSubmission(submissionId) {
+    if (!confirm('Are you sure you want to reject this submission?')) return;
+    try {
+        await api.rejectSubmission(submissionId);
+        alert('Submission rejected.');
+        const user = session.getUser();
+        if (user && user.type === 'teacher') {
+            refreshTeacherDashboard(user.teacher_id); // Re-fetch and re-render
+        }
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+// --- QR SCANNER UTILS ---
+function startQrScanner(elementId, callback) { /* ... unchanged ... */ }
+function stopQrScanner() { /* ... unchanged ... */ }
+
+
+// --- UNCHANGED FUNCTIONS (for completeness) ---
+function initTeacherLoginPage() {
+    const form = document.getElementById('teacher-login-form');
+    if (!form) return;
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('teacher-email').value;
+        const password = document.getElementById('teacher-password').value;
+        try {
+            const data = await api.loginTeacher(email, password);
+            session.saveUser({ type: 'teacher', ...data });
+            window.location.href = 'teacher_dashboard.html';
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+}
+
+function initStudentLoginPage() {
+    startQrScanner('qr-reader', async (decodedText) => {
+        try {
+            stopQrScanner();
+            const data = await api.loginStudent(decodedText);
+            session.saveUser({ type: 'student', ...data });
+            window.location.href = 'student_dashboard.html';
+        } catch (error) {
+            alert(error.message);
+            setTimeout(() => { startQrScanner('qr-reader',_=>{}); }, 3000);
         }
     });
 }
@@ -278,22 +416,20 @@ async function initLeaderboardPage() {
     }
 }
 
-// --- DYNAMIC DATA HANDLING & RE-RENDERING ---
-async function refreshTeacherDashboard(teacherId) {
-    try {
-        const [submissions, roster] = await Promise.all([
-            api.getTeacherSubmissions(teacherId),
-            api.getTeacherRoster(teacherId)
-        ]);
-        renderSubmissions(submissions);
-        renderRoster(roster);
-        renderAnalyticsChart(roster);
-    } catch (error) {
-        alert(`Could not refresh dashboard data: ${error.message}`); // MODIFIED
-    }
+function renderStudentDashboard(container, profile, tasks) {
+    if (!container) return;
+    const getPet = (points) => {
+        const levels = { 1: { name: 'Sprout', emoji: '🌱', next: 100 }, 2: { name: 'Sapling', emoji: '🌳', next: 300 }, 3: { name: 'Mighty Tree', emoji: '🌲', next: Infinity } };
+        let level = 1;
+        if (points >= levels[1].next) level = 2; if (points >= levels[2].next) level = 3;
+        const progress = level < 3 ? (points / levels[level].next) * 100 : 100;
+        return { ...levels[level], progress };
+    };
+    const pet = getPet(profile.points);
+    const badgesHTML = profile.badges.map(b => `<span class="badge" title="${b.name}: ${b.description}">${b.icon_url}</span>`).join('');
+    container.innerHTML = `<div class="dashboard-grid"><aside class="sidebar"><div class="card eco-pet-card"><h2>${profile.full_name}</h2><span class="eco-pet-emoji">${pet.emoji}</span><span><strong>${pet.name}</strong></span><div class="progress-bar-container"><div class="progress-bar" style="width: ${pet.progress}%;"></div></div><div class="points-display">${profile.points} Points</div><div class="badges-grid">${badgesHTML || '<p style="font-size: 0.9rem; color: var(--text-light);">No badges yet!</p>'}</div></div></aside><main class="content"><h2>Available Eco-Missions</h2><div class="tasks-grid">${tasks.map(task => `<a href="${task.task_type === 'quiz' ? 'quiz.html?id=' + task.id : 'task_detail.html?id=' + task.id}" class="card task-card"><div><span class="task-type-badge task-type-${task.task_type.replace('_','')}">${task.task_type.replace('_', ' ')}</span><h3>${task.title}</h3><p>${task.description}</p></div><strong class="task-card-points">${task.points_reward} Points</strong></a>`).join('')}</div></main></div>`;
 }
 
-// --- RENDER FUNCTIONS ---
 function renderSubmissions(submissions) {
     const container = document.getElementById('submissions-container');
     if(!container) return;
@@ -312,96 +448,6 @@ function renderRoster(roster) {
     container.innerHTML = '<h2>Student Roster</h2>' + tableHTML;
 }
 
-function renderStudentDashboard(container, profile, tasks) {
-    if (!container) return;
-    const getPet = (points) => {
-        const levels = { 1: { name: 'Sprout', emoji: '🌱', next: 100 }, 2: { name: 'Sapling', emoji: '🌳', next: 300 }, 3: { name: 'Mighty Tree', emoji: '🌲', next: Infinity } };
-        let level = 1;
-        if (points >= levels[1].next) level = 2; if (points >= levels[2].next) level = 3;
-        const progress = level < 3 ? (points / levels[level].next) * 100 : 100;
-        return { ...levels[level], progress };
-    };
-    const pet = getPet(profile.points);
-    const badgesHTML = profile.badges.map(b => `<span class="badge" title="${b.name}: ${b.description}">${b.icon_url}</span>`).join('');
-    container.innerHTML = `<div class="dashboard-grid"><aside class="sidebar"><div class="card eco-pet-card"><h2>${profile.full_name}</h2><span class="eco-pet-emoji">${pet.emoji}</span><span><strong>${pet.name}</strong></span><div class="progress-bar-container"><div class="progress-bar" style="width: ${pet.progress}%;"></div></div><div class="points-display">${profile.points} Points</div><div class="badges-grid">${badgesHTML || '<p style="font-size: 0.9rem; color: var(--text-light);">No badges yet!</p>'}</div></div></aside><main class="content"><h2>Available Eco-Missions</h2><div class="tasks-grid">${tasks.map(task => `<a href="${task.task_type === 'quiz' ? 'quiz.html?id=' + task.id : 'task_detail.html?id=' + task.id}" class="card task-card"><div><span class="task-type-badge task-type-${task.task_type.replace('_','')}">${task.task_type.replace('_', ' ')}</span><h3>${task.title}</h3><p>${task.description}</p></div><strong class="task-card-points">${task.points_reward} Points</strong></a>`).join('')}</div></main></div>`;
-}
-
-function renderSubmissionHistory(history) {
-    const container = document.getElementById('history-content');
-    if (!container) return;
-    if (history.length === 0) {
-        container.innerHTML = '<p>You haven\'t submitted any tasks yet. Get started!</p>';
-        return;
-    }
-    const statusBadges = {
-        approved: '<span class="status-badge status-approved">Approved</span>',
-        pending: '<span class="status-badge status-pending">Pending</span>',
-        rejected: '<span class="status-badge status-rejected">Rejected</span>',
-    };
-    const tableHTML = `<table class="list-table"><thead><tr><th>Task</th><th>Submitted</th><th>Status</th></tr></thead><tbody>
-        ${history.map(s => `<tr><td>${s.task_title}</td><td>${new Date(s.submitted_at).toLocaleDateString()}</td><td>${statusBadges[s.status] || s.status}</td></tr>`).join('')}
-    </tbody></table>`;
-    container.innerHTML = tableHTML;
-}
-
-function renderAnalyticsChart(roster) {
-    const chartEl = document.getElementById('tasksChart');
-    if (!chartEl) return;
-    const ctx = chartEl.getContext('2d');
-    if (myChart) myChart.destroy();
-
-    const taskDistribution = { 'Beginner (0-100)': 0, 'Intermediate (101-300)': 0, 'Advanced (>300)': 0 };
-    roster.forEach(s => {
-        if (s.points <= 100) taskDistribution['Beginner (0-100)']++;
-        else if (s.points <= 300) taskDistribution['Intermediate (101-300)']++;
-        else taskDistribution['Advanced (>300)']++;
-    });
-
-    myChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(taskDistribution),
-            datasets: [{
-                label: 'Student Point Distribution',
-                data: Object.values(taskDistribution),
-                backgroundColor: ['#34d399', '#fbbf24', '#60a5fa'],
-                hoverOffset: 4
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-    });
-}
-
-// --- GLOBAL ACTION HANDLERS ---
-async function approveSubmission(submissionId) {
-    if (!confirm('Are you sure you want to approve this submission?')) return;
-    try {
-        await api.approveSubmission(submissionId);
-        alert('Submission approved!');
-        const user = session.getUser();
-        if (user && user.type === 'teacher') {
-            refreshTeacherDashboard(user.teacher_id);
-        }
-    } catch (error) {
-        alert(error.message);
-    }
-}
-
-async function rejectSubmission(submissionId) {
-    if (!confirm('Are you sure you want to reject this submission?')) return;
-    try {
-        await api.rejectSubmission(submissionId);
-        alert('Submission rejected.');
-        const user = session.getUser();
-        if (user && user.type === 'teacher') {
-            refreshTeacherDashboard(user.teacher_id);
-        }
-    } catch (error) {
-        alert(error.message);
-    }
-}
-
-// --- QR SCANNER UTILS ---
 function startQrScanner(elementId, callback) {
     if (document.getElementById(elementId)) {
         qrScanner = new Html5Qrcode(elementId);
