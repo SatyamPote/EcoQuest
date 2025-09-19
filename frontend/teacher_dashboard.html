@@ -2,43 +2,42 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Dashboard - EcoQuest</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- Chart.js for the analytics pie chart -->
+    <link rel="stylesheet" href="/frontend/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <header id="navbar-container"></header>
     <main>
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div class="dashboard-header">
             <h1>Teacher Dashboard</h1>
+            <div class="header-actions">
+                <a href="create_task.html" class="btn btn-blue">+ Create Mission</a>
+                <a href="create_quiz.html" class="btn btn-green">+ Create Quiz</a>
+            </div>
         </div>
-        <p>Welcome, <span id="teacher-name">Loading...</span>!</p>
-        
+        <p>Welcome, <span id="teacher-name"></span>!</p>
+
         <div class="dashboard-grid">
-            <!-- Container for pending submissions -->
             <div id="submissions-container" class="card">
                 <h2>Pending Submissions</h2>
-                <div class="spinner"></div>
+                <!-- Dynamic content will be loaded here -->
+                <div id="submissions-content" class="spinner"></div>
             </div>
-            <!-- Container for the analytics chart -->
             <div id="analytics-container" class="card">
                 <h2>Class Analytics</h2>
                 <canvas id="tasksChart"></canvas>
             </div>
         </div>
 
-        <!-- Container for the full student list -->
-        <div id="roster-container" class="card" style="margin-top: 2rem;">
+        <div class="card" style="margin-top: 2rem;">
             <h2>Student Roster</h2>
-            <div class="spinner"></div>
+            <!-- Dynamic content will be loaded here -->
+            <div id="roster-content" class="spinner"></div>
         </div>
     </main>
-
-    <div id="notification-container"></div>
-    <script src="components/notifications.js"></script>
-    <script src="components/navbar.js"></script>
+    
+    <script src="/components/navbar.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

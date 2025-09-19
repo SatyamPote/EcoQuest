@@ -1,9 +1,8 @@
 // --- CONFIGURATION ---
-// IMPORTANT: Use your LIVE Vercel backend URL here for deployment.
 const API_BASE_URL = 'https://eco-quest-theta.vercel.app';
 let qrScanner;
-let myChart = null; // Global variable for the chart instance
-let cameraStream = null; // Global variable to hold the camera stream
+let myChart = null;
+let cameraStream = null;
 
 console.log("--- EcoQuest Script Initialized ---");
 
@@ -31,11 +30,9 @@ const api = {
                 const errorData = await response.json();
                 throw new Error(errorData.detail || 'An API error occurred');
             }
-            const contentType = response.headers.get("content-type");
-            if (contentType && contentType.includes("application/json")) {
+            if (response.headers.get("content-type")?.includes("application/json")) {
                 return response.json();
             }
-            return;
         } catch (error) {
             console.error('API Request Error:', error);
             throw error;
@@ -61,33 +58,30 @@ const api = {
 // --- PAGE INITIALIZER ROUTER ---
 document.addEventListener('DOMContentLoaded', () => {
     const pagePath = window.location.pathname;
+    const isIndex = pagePath.endsWith('/') || pagePath.endsWith('/index.html');
+
     const pageInitializers = {
-        '/index.html': () => {},
-        '/teacher_login.html': initTeacherLoginPage,
-        '/student_login.html': initStudentLoginPage,
-        '/teacher_dashboard.html': initTeacherDashboardPage,
-        '/add_student.html': initAddStudentPage,
-        '/student_dashboard.html': initStudentDashboardPage,
-        '/task_detail.html': initTaskDetailPage,
-        '/quiz.html': initQuizPage,
-        '/leaderboard.html': initLeaderboardPage,
-        '/create_task.html': initCreateTaskPage,
-        '/create_quiz.html': initCreateQuizPage,
+        'teacher_login.html': initTeacherLoginPage,
+        'student_login.html': initStudentLoginPage,
+        'teacher_dashboard.html': initTeacherDashboardPage,
+        'add_student.html': initAddStudentPage,
+        'student_dashboard.html': initStudentDashboardPage,
+        'task_detail.html': initTaskDetailPage,
+        'quiz.html': initQuizPage,
+        'leaderboard.html': initLeaderboardPage,
+        'create_task.html': initCreateTaskPage,
+        'create_quiz.html': initCreateQuizPage,
     };
 
-    // Attach logout functionality globally if button exists
-    const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) logoutBtn.onclick = () => session.logout();
+    if (isIndex) return;
 
-    // Run the initializer for the current page
     for (const path in pageInitializers) {
-        if (pagePath.endsWith(path) || (pagePath.endsWith('/') && path.includes('index.html'))) {
+        if (pagePath.endsWith(path)) {
             pageInitializers[path]();
-            return;
+            break;
         }
     }
 });
-
 
 // --- INITIALIZATION FUNCTIONS ---
 function initTeacherLoginPage() {
@@ -143,7 +137,7 @@ async function initStudentDashboardPage() {
         renderSubmissionHistory(history);
     } catch (error) {
         alert(`Could not load dashboard data: ${error.message}`);
-        if (container) container.innerHTML = `<p class="error-message">Could not load dashboard. Please try logging in again.</p>`;
+        if (container) container.innerHTML = `<p class="error-message">Could not load dashboard.</p>`;
     }
 }
 
@@ -212,16 +206,7 @@ function initCreateQuizPage() {
         questionCounter++;
         const block = document.createElement('div');
         block.className = 'question-block';
-        block.innerHTML = `
-            <h3>Question ${questionCounter}</h3>
-            <button type="button" class="remove-question-btn">&times;</button>
-            <div class="form-group"><label>Question Text</label><input type="text" class="q-text" required></div>
-            <div class="form-group"><label>Option A</label><input type="text" class="q-opt-a" required></div>
-            <div class="form-group"><label>Option B</label><input type="text" class="q-opt-b" required></div>
-            <div class="form-group"><label>Option C</label><input type="text" class="q-opt-c" required></div>
-            <div class="form-group correct-answer-group"><label>Correct Answer</label><select class="q-correct">
-                <option value="A">Option A</option><option value="B">Option B</option><option value="C">Option C</option>
-            </select></div>`;
+        block.innerHTML = `<h3>Question ${questionCounter}</h3><button type="button" class="remove-question-btn">&times;</button><div class="form-group"><label>Question Text</label><input type="text" class="q-text" required></div><div class="form-group"><label>Option A</label><input type="text" class="q-opt-a" required></div><div class="form-group"><label>Option B</label><input type="text" class="q-opt-b" required></div><div class="form-group"><label>Option C</label><input type="text" class="q-opt-c" required></div><div class="form-group correct-answer-group"><label>Correct Answer</label><select class="q-correct"><option value="A">A</option><option value="B">B</option><option value="C">C</option></select></div>`;
         questionsContainer.appendChild(block);
         block.querySelector('.remove-question-btn').addEventListener('click', () => block.remove());
     };
@@ -231,19 +216,15 @@ function initCreateQuizPage() {
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const questions = [];
-        const questionBlocks = document.querySelectorAll('.question-block');
-        if (questionBlocks.length === 0) return alert('A quiz must have at least one question.');
+        const questions = Array.from(document.querySelectorAll('.question-block')).map(block => ({
+            question_text: block.querySelector('.q-text').value,
+            option_a: block.querySelector('.q-opt-a').value,
+            option_b: block.querySelector('.q-opt-b').value,
+            option_c: block.querySelector('.q-opt-c').value,
+            correct_answer: block.querySelector('.q-correct').value
+        }));
 
-        for (const block of questionBlocks) {
-            questions.push({
-                question_text: block.querySelector('.q-text').value,
-                option_a: block.querySelector('.q-opt-a').value,
-                option_b: block.querySelector('.q-opt-b').value,
-                option_c: block.querySelector('.q-opt-c').value,
-                correct_answer: block.querySelector('.q-correct').value
-            });
-        }
+        if (questions.length === 0) return alert('A quiz must have at least one question.');
 
         const quizData = {
             title: document.getElementById('quiz-title').value,
@@ -265,27 +246,18 @@ function initCreateQuizPage() {
 async function initTaskDetailPage() {
     const user = session.getUser();
     if (!user || user.type !== 'student') return window.location.href = 'student_login.html';
-
     const taskId = new URLSearchParams(window.location.search).get('id');
     const container = document.getElementById('task-content');
     if (!container) return;
+    if (!taskId) return container.innerHTML = '<p class="error-message">Task ID not found.</p>';
 
-    if (!taskId) {
-        container.innerHTML = '<p class="error-message">Task ID not found.</p>';
-        return;
-    }
     try {
         const tasks = await api.getTasks();
         const task = tasks.find(t => t.id === taskId);
-        if (!task) {
-            container.innerHTML = '<p class="error-message">Task not found.</p>';
-            return;
-        }
-        if (task.task_type === "photo_upload") {
-            setupCameraUI(container, task);
-        } else if (task.task_type === "secret_code") {
-            setupSecretCodeUI(container, task);
-        }
+        if (!task) return container.innerHTML = '<p class="error-message">Task not found.</p>';
+
+        if (task.task_type === "photo_upload") setupCameraUI(container, task);
+        else if (task.task_type === "secret_code") setupSecretCodeUI(container, task);
     } catch (error) {
         alert(error.message);
     }
@@ -294,29 +266,22 @@ async function initTaskDetailPage() {
 async function initQuizPage() {
     const user = session.getUser();
     if (!user || user.type !== 'student') return window.location.href = 'student_login.html';
-
     const taskId = new URLSearchParams(window.location.search).get('id');
     const quizTitleEl = document.getElementById('quiz-title');
     const form = document.getElementById('quiz-form');
     if (!quizTitleEl || !form) return;
+    if (!taskId) return quizTitleEl.textContent = 'Error: Quiz ID not found.';
 
-    if (!taskId) {
-        quizTitleEl.textContent = 'Error: Quiz ID not found.';
-        return;
-    }
     try {
         const tasks = await api.getTasks();
         const task = tasks.find(t => t.id === taskId);
-        if (!task || task.task_type !== 'quiz') {
-            quizTitleEl.textContent = 'Error: Quiz not found.';
-            return;
-        }
+        if (!task || task.task_type !== 'quiz') return quizTitleEl.textContent = 'Error: Quiz not found.';
 
         quizTitleEl.textContent = task.title;
         form.innerHTML = task.questions.map((q, index) => `
             <div class="quiz-question card">
                 <p><strong>Question ${index + 1}: ${q.question_text}</strong></p>
-                <div class="quiz-options" data-question-id="${q.id}">
+                <div class="quiz-options">
                     <input type="radio" id="q${q.id}_a" name="q_${q.id}" value="A" required><label for="q${q.id}_a">A) ${q.option_a}</label>
                     <input type="radio" id="q${q.id}_b" name="q_${q.id}" value="B"><label for="q${q.id}_b">B) ${q.option_b}</label>
                     <input type="radio" id="q${q.id}_c" name="q_${q.id}" value="C"><label for="q${q.id}_c">C) ${q.option_c}</label>
@@ -330,9 +295,7 @@ async function initQuizPage() {
                 const selected = form.querySelector(`input[name="q_${q.id}"]:checked`);
                 if (selected) answers[q.id] = selected.value;
             });
-            if (Object.keys(answers).length !== task.questions.length) {
-                return alert('Please answer all questions.');
-            }
+            if (Object.keys(answers).length !== task.questions.length) return alert('Please answer all questions.');
             try {
                 const result = await api.submitQuiz(user.student_id, taskId, answers);
                 alert(result.message);
@@ -351,23 +314,13 @@ async function initLeaderboardPage() {
     if (!container) return;
     try {
         const leaderboard = await api.getLeaderboard();
-        container.innerHTML = `
-            <table class="list-table">
-                <thead><tr><th>Rank</th><th>Name</th><th>Points</th></tr></thead>
-                <tbody>${leaderboard.map((s, i) => `
-                    <tr class="rank-${i + 1}">
-                        <td>${i + 1}</td>
-                        <td>${s.full_name}</td>
-                        <td>${s.points}</td>
-                    </tr>`).join('')}
-                </tbody>
-            </table>`;
+        container.innerHTML = `<table class="list-table"><thead><tr><th>Rank</th><th>Name</th><th>Points</th></tr></thead><tbody>${leaderboard.map((s, i) => `
+            <tr class="rank-${i + 1}"><td>${i + 1}</td><td>${s.full_name}</td><td>${s.points}</td></tr>`).join('')}</tbody></table>`;
     } catch (error) {
         alert(error.message);
         container.innerHTML = `<p class="error-message">Could not load leaderboard.</p>`;
     }
 }
-
 
 // --- DYNAMIC DATA & RENDER FUNCTIONS ---
 async function refreshTeacherDashboard(teacherId) {
@@ -387,86 +340,46 @@ async function refreshTeacherDashboard(teacherId) {
 function renderStudentDashboard(container, profile, tasks) {
     if (!container) return;
     const getPet = (points) => {
-        const levels = {
-            1: { name: 'Sprout', emoji: '🌱', next: 100 },
-            2: { name: 'Sapling', emoji: '🌳', next: 300 },
-            3: { name: 'Mighty Tree', emoji: '🌲', next: Infinity }
-        };
-        let level = 1;
-        if (points >= levels[1].next) level = 2;
-        if (points >= levels[2].next) level = 3;
+        const levels = { 1: { name: 'Sprout', emoji: '🌱', next: 100 }, 2: { name: 'Sapling', emoji: '🌳', next: 300 }, 3: { name: 'Mighty Tree', emoji: '🌲', next: Infinity } };
+        let level = 1; if (points >= levels[1].next) level = 2; if (points >= levels[2].next) level = 3;
         const progress = level < 3 ? (points / levels[level].next) * 100 : 100;
         return { ...levels[level], progress };
     };
     const pet = getPet(profile.points);
     const badgesHTML = profile.badges.map(b => `<span class="badge" title="${b.name}: ${b.description}">${b.icon_url}</span>`).join('');
-    container.innerHTML = `
-        <div class="dashboard-grid">
-            <aside class="sidebar">
-                <div class="card eco-pet-card">
-                    <h2>${profile.full_name}</h2>
-                    <span class="eco-pet-emoji">${pet.emoji}</span>
-                    <span><strong>${pet.name}</strong></span>
-                    <div class="progress-bar-container"><div class="progress-bar" style="width: ${pet.progress}%;"></div></div>
-                    <div class="points-display">${profile.points} Points</div>
-                    <div class="badges-grid">${badgesHTML || '<p style="font-size: 0.9rem; color: var(--text-light);">No badges yet!</p>'}</div>
-                </div>
-            </aside>
-            <main class="content">
-                <h2>Available Eco-Missions</h2>
-                <div class="tasks-grid">${tasks.map(task => `
-                    <a href="${task.task_type === 'quiz' ? 'quiz.html?id=' + task.id : 'task_detail.html?id=' + task.id}" class="card task-card">
-                        <div>
-                            <span class="task-type-badge task-type-${task.task_type.replace('_','')}">${task.task_type.replace('_', ' ')}</span>
-                            <h3>${task.title}</h3>
-                            <p>${task.description}</p>
-                        </div>
-                        <strong class="task-card-points">${task.points_reward} Points</strong>
-                    </a>`).join('')}
-                </div>
-            </main>
-        </div>`;
+    container.innerHTML = `<div class="dashboard-grid"><aside class="sidebar"><div class="card eco-pet-card"><h2>${profile.full_name}</h2><span class="eco-pet-emoji">${pet.emoji}</span><span><strong>${pet.name}</strong></span><div class="progress-bar-container"><div class="progress-bar" style="width: ${pet.progress}%;"></div></div><div class="points-display">${profile.points} Points</div><div class="badges-grid">${badgesHTML || '<p style="font-size: 0.9rem; color: var(--text-light);">No badges yet!</p>'}</div></div></aside><main class="content"><h2>Available Eco-Missions</h2><div class="tasks-grid">${tasks.map(task => `<a href="${task.task_type === 'quiz' ? 'quiz.html?id=' + task.id : 'task_detail.html?id=' + task.id}" class="card task-card"><div><span class="task-type-badge task-type-${task.task_type.replace('_','')}">${task.task_type.replace('_', ' ')}</span><h3>${task.title}</h3><p>${task.description}</p></div><strong class="task-card-points">${task.points_reward} Points</strong></a>`).join('')}</div></main></div>`;
 }
 
+// **FIXED**: This function now targets the inner content div.
 function renderSubmissions(submissions) {
-    const container = document.getElementById('submissions-container');
+    const container = document.getElementById('submissions-content');
     if (!container) return;
-    let content;
     if (submissions.length === 0) {
-        content = '<h2>Pending Submissions</h2><p>No pending submissions. Great job!</p>';
+        container.innerHTML = '<p>No pending submissions. Great job!</p>';
     } else {
         const tableRows = submissions.map(s => `<tr><td>${s.student_name}</td><td>${s.task_title}</td><td class="submission-actions"><button class="btn btn-green" onclick="approveSubmission('${s.id}')">Approve</button><button class="btn btn-red" onclick="rejectSubmission('${s.id}')">Reject</button></td></tr>`).join('');
-        content = `<h2>Pending Submissions</h2><table class="list-table"><thead><tr><th>Student</th><th>Task</th><th>Actions</th></tr></thead><tbody>${tableRows}</tbody></table>`;
+        container.innerHTML = `<table class="list-table"><thead><tr><th>Student</th><th>Task</th><th>Actions</th></tr></thead><tbody>${tableRows}</tbody></table>`;
     }
-    container.innerHTML = content;
 }
 
+// **FIXED**: This function now targets the inner content div.
 function renderRoster(roster) {
-    const container = document.getElementById('roster-container');
+    const container = document.getElementById('roster-content');
     if (!container) return;
-    let content;
     if (roster.length === 0) {
-        content = '<h2>Student Roster</h2><p>No students have been added yet.</p>';
+        container.innerHTML = '<p>No students have been added yet.</p>';
     } else {
-        // FIXED a typo here, was 'rows' instead of 'tableRows'
         const tableRows = roster.map(s => `<tr><td>${s.full_name}</td><td>${s.class_name}</td><td>${s.points}</td></tr>`).join('');
-        content = `<h2>Student Roster</h2><table class="list-table"><thead><tr><th>Name</th><th>Class</th><th>Points</th></tr></thead><tbody>${tableRows}</tbody></table>`;
+        container.innerHTML = `<table class="list-table"><thead><tr><th>Name</th><th>Class</th><th>Points</th></tr></thead><tbody>${tableRows}</tbody></table>`;
     }
-    container.innerHTML = content;
 }
 
 function renderAnalyticsChart(roster) {
     const chartEl = document.getElementById('tasksChart');
     if (!chartEl) return;
     const ctx = chartEl.getContext('2d');
-    if (myChart) {
-        myChart.destroy();
-    }
-    const dist = {
-        'Beginner (0-100)': 0,
-        'Intermediate (101-300)': 0,
-        'Advanced (>300)': 0
-    };
+    if (myChart) myChart.destroy();
+    const dist = { 'Beginner (0-100)': 0, 'Intermediate (101-300)': 0, 'Advanced (>300)': 0 };
     roster.forEach(s => {
         if (s.points <= 100) dist['Beginner (0-100)']++;
         else if (s.points <= 300) dist['Intermediate (101-300)']++;
@@ -476,22 +389,9 @@ function renderAnalyticsChart(roster) {
         type: 'doughnut',
         data: {
             labels: Object.keys(dist),
-            datasets: [{
-                label: 'Student Point Distribution',
-                data: Object.values(dist),
-                backgroundColor: ['#34d399', '#fbbf24', '#60a5fa'],
-                hoverOffset: 4
-            }]
+            datasets: [{ data: Object.values(dist), backgroundColor: ['#34d399', '#fbbf24', '#60a5fa'], hoverOffset: 4 }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top'
-                }
-            }
-        }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }
     });
 }
 
@@ -500,40 +400,18 @@ function renderSubmissionHistory(history) {
     if (!container) return;
     if (history.length === 0) {
         container.innerHTML = '<p>You haven\'t submitted any tasks yet. Get started!</p>';
-        return;
+    } else {
+        const statusBadges = { approved: '<span class="status-badge status-approved">Approved</span>', pending: '<span class="status-badge status-pending">Pending</span>', rejected: '<span class="status-badge status-rejected">Rejected</span>' };
+        container.innerHTML = `<table class="list-table"><thead><tr><th>Task</th><th>Submitted</th><th>Status</th></tr></thead><tbody>${history.map(s => `<tr><td>${s.task_title}</td><td>${new Date(s.submitted_at).toLocaleDateString()}</td><td>${statusBadges[s.status] || s.status}</td></tr>`).join('')}</tbody></table>`;
     }
-    const statusBadges = {
-        approved: '<span class="status-badge status-approved">Approved</span>',
-        pending: '<span class="status-badge status-pending">Pending</span>',
-        rejected: '<span class="status-badge status-rejected">Rejected</span>'
-    };
-    container.innerHTML = `
-        <table class="list-table">
-            <thead><tr><th>Task</th><th>Submitted</th><th>Status</th></tr></thead>
-            <tbody>${history.map(s => `
-                <tr>
-                    <td>${s.task_title}</td>
-                    <td>${new Date(s.submitted_at).toLocaleDateString()}</td>
-                    <td>${statusBadges[s.status] || s.status}</td>
-                </tr>`).join('')}
-            </tbody>
-        </table>`;
 }
 
 // --- UI SETUP FUNCTIONS ---
 function setupSecretCodeUI(container, task) {
     const user = session.getUser();
-    container.innerHTML = `
-        <h2>${task.title}</h2>
-        <p>${task.description}</p>
-        <div class="form-group">
-            <label for="secret-code">Enter Secret Code</label>
-            <input type="text" id="secret-code" placeholder="e.g., OAK-123">
-        </div>
-        <button id="submit-btn" class="btn btn-blue">Verify Code</button>`;
+    container.innerHTML = `<h2>${task.title}</h2><p>${task.description}</p><div class="form-group"><label for="secret-code">Enter Secret Code</label><input type="text" id="secret-code" placeholder="e.g., OAK-123"></div><button id="submit-btn" class="btn btn-blue">Verify Code</button>`;
     document.getElementById('submit-btn').onclick = () => {
-        const codeInput = document.getElementById('secret-code');
-        if (codeInput.value.toUpperCase() === 'OAK-123') { // Demo code
+        if (document.getElementById('secret-code').value.toUpperCase() === 'OAK-123') {
             api.submitPhoto(user.student_id, task.id).then(() => {
                 alert('Correct Code! Task submitted!');
                 setTimeout(() => window.location.href = 'student_dashboard.html', 1500);
@@ -546,21 +424,7 @@ function setupSecretCodeUI(container, task) {
 
 function setupCameraUI(container, task) {
     const user = session.getUser();
-    container.innerHTML = `
-        <h2>${task.title}</h2>
-        <p>${task.description}</p>
-        <div class="camera-container">
-            <video id="camera-view" class="camera-view" autoplay playsinline></video>
-            <canvas id="photo-preview" class="photo-preview hidden"></canvas>
-            <div id="camera-controls" class="camera-controls">
-                <button id="capture-btn" class="btn btn-blue">Capture Photo</button>
-            </div>
-            <div id="preview-controls" class="camera-controls hidden">
-                <button id="retake-btn" class="btn btn-gray">Retake</button>
-                <button id="submit-photo-btn" class="btn btn-green">Submit for Review</button>
-            </div>
-        </div>`;
-
+    container.innerHTML = `<div class="camera-container"><video id="camera-view" autoplay playsinline></video><canvas id="photo-preview" class="hidden"></canvas></div><div id="camera-controls"><button id="capture-btn" class="btn btn-blue">Capture Photo</button></div><div id="preview-controls" class="hidden"><button id="retake-btn" class="btn btn-gray">Retake</button><button id="submit-photo-btn" class="btn btn-green">Submit</button></div>`;
     const video = document.getElementById('camera-view');
     const canvas = document.getElementById('photo-preview');
     const captureBtn = document.getElementById('capture-btn');
@@ -568,9 +432,9 @@ function setupCameraUI(container, task) {
     const submitBtn = document.getElementById('submit-photo-btn');
     const cameraControls = document.getElementById('camera-controls');
     const previewControls = document.getElementById('preview-controls');
-
+    
     startCamera(video);
-
+    
     captureBtn.addEventListener('click', () => {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -607,8 +471,7 @@ async function approveSubmission(submissionId) {
     try {
         await api.approveSubmission(submissionId);
         alert('Submission approved!');
-        const user = session.getUser();
-        await refreshTeacherDashboard(user.teacher_id);
+        await refreshTeacherDashboard(session.getUser().teacher_id);
     } catch (error) {
         alert(error.message);
     }
@@ -619,8 +482,7 @@ async function rejectSubmission(submissionId) {
     try {
         await api.rejectSubmission(submissionId);
         alert('Submission rejected.');
-        const user = session.getUser();
-        await refreshTeacherDashboard(user.teacher_id);
+        await refreshTeacherDashboard(session.getUser().teacher_id);
     } catch (error) {
         alert(error.message);
     }
@@ -628,7 +490,8 @@ async function rejectSubmission(submissionId) {
 
 // --- UTILITY FUNCTIONS ---
 function startQrScanner(elementId, callback) {
-    if (document.getElementById(elementId)) {
+    const scannerEl = document.getElementById(elementId);
+    if (scannerEl) {
         qrScanner = new Html5Qrcode(elementId);
         qrScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, callback, () => {})
             .catch(err => console.error("QR Scanner failed to start.", err));
@@ -636,7 +499,7 @@ function startQrScanner(elementId, callback) {
 }
 
 function stopQrScanner() {
-    if (qrScanner && qrScanner.getState() === 2) { // 2 is SCANNING state
+    if (qrScanner && qrScanner.getState() === 2) {
         qrScanner.stop().catch(err => console.error("QR Scanner failed to stop.", err));
     }
 }
@@ -660,5 +523,4 @@ function stopCamera() {
     }
 }
 
-// Ensure camera is always turned off when the page is closed or navigated away
 window.addEventListener('beforeunload', stopCamera);
