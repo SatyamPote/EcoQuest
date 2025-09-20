@@ -5,26 +5,449 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - EcoQuest</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@700&display=swap');
+
+        :root {
+            --primary-green: #166534;
+            --secondary-green: #22c55e;
+            --primary-blue: #1e40af;
+            --light-bg: #f0fdf4;
+            --card-bg: #ffffff;
+            --text-dark: #1f2937;
+            --text-light: #4b5563;
+            --border-color: #e5e7eb;
+            --error-color: #ef4444;
+            --warning-color: #f59e0b;
+            --success-color: #16a34a;
+            --pending-color: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        main {
+            width: 100%;
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+        }
+
+        h1,
+        h2 {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: var(--primary-green);
+            margin-bottom: 0.5rem;
+        }
+
+        h2 {
+            font-size: 1.75rem;
+            color: var(--text-dark);
+            margin-bottom: 1rem;
+        }
+
+        p {
+            color: var(--text-light);
+            margin-bottom: 1.5rem;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: background-color 0.2s, transform 0.1s;
+            text-decoration: none;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-green {
+            background-color: var(--secondary-green);
+        }
+
+        .btn-green:hover {
+            background-color: #16a34a;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+        }
+
+        #navbar-container {
+            background-color: var(--card-bg);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            padding: 0 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 60px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .nav-brand {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.5rem;
+            color: var(--primary-green);
+            text-decoration: none;
+        }
+
+        .nav-links a {
+            color: var(--text-light);
+            text-decoration: none;
+            margin-left: 1.5rem;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary-green);
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: var(--primary-green);
+            animation: spin 1s ease infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 900px) {
+            .dashboard-grid {
+                grid-template-columns: 300px 1fr;
+            }
+        }
+
+        .eco-pet-card {
+            text-align: center;
+        }
+
+        .eco-pet-emoji {
+            font-size: 5rem;
+            line-height: 1;
+        }
+        
+        .progress-bar-container {
+            background-color: var(--border-color);
+            border-radius: 99px;
+            height: 10px;
+            margin: 0.5rem 0;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background-color: var(--secondary-green);
+            height: 100%;
+            border-radius: 99px;
+            transition: width 0.5s ease-in-out;
+        }
+
+        .points-display {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--warning-color);
+        }
+
+        .badges-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+
+        .badge {
+            font-size: 2rem;
+        }
+
+        .tasks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .task-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform 0.2s;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .task-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .task-card-points {
+            font-weight: 700;
+            color: var(--warning-color);
+            font-size: 1.2rem;
+        }
+
+        .task-type-badge {
+            align-self: flex-start;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-transform: capitalize;
+        }
+
+        .task-type-quiz {
+            background-color: #eff6ff;
+            color: #1d4ed8;
+        }
+
+        .task-type-photo_upload,
+        .task-type-secret_code {
+            background-color: #f0fdf4;
+            color: #166534;
+        }
+
+        .list-table {
+            width: 100%;
+            border-collapse: collapse;
+            overflow-x: auto;
+            display: block;
+        }
+
+        .list-table th,
+        .list-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        .list-table th {
+            background-color: #f9fafb;
+        }
+
+        .list-table tr:hover {
+            background-color: #f9fafb;
+        }
+        
+        .status-badge {
+            padding: 0.2rem 0.6rem;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: white;
+            text-transform: capitalize;
+        }
+
+        .status-approved {
+            background-color: var(--success-color);
+        }
+
+        .status-pending {
+            background-color: var(--pending-color);
+        }
+
+        .status-rejected {
+            background-color: var(--error-color);
+        }
+
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: var(--card-bg);
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.1);
+            z-index: 1;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .dropdown-content a {
+            color: var(--text-dark);
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            margin: 0 !important;
+        }
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+    </style>
 </head>
 
 <body>
-    <header id="navbar-container"></header>
+    <header id="navbar-container">
+        <nav class="navbar">
+            <a href="#" class="nav-brand">EcoQuest</a>
+            <div class="nav-links">
+                <a href="#">Dashboard</a>
+                <a href="#">Tasks</a>
+                <div class="dropdown">
+                    <a href="javascript:void(0)">Admin &#9662;</a>
+                    <div class="dropdown-content">
+                        <a href="#">Create Task</a>
+                        <a href="#">Submissions</a>
+                    </div>
+                </div>
+                <a href="#">Logout</a>
+            </div>
+        </nav>
+    </header>
     <main>
+        <h1>Welcome, Eco-Warrior!</h1>
+        <p>Your actions are making a real difference. Keep up the great work!</p>
         <div id="dashboard-content">
-            <div class="spinner"></div>
+            <div class="dashboard-grid">
+                <aside>
+                    <div class="card eco-pet-card">
+                        <h2>Your Eco Pet</h2>
+                        <div class="eco-pet-emoji">🌱</div>
+                        <p>Your little seedling is growing. Earn more points to help it become a mighty tree!</p>
+                        <div class="points-display">150 Points</div>
+                        <p>Level 2</p>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" style="width: 75%;"></div>
+                        </div>
+                        <small>50 more points to Level 3!</small>
+                        <hr style="margin: 1.5rem 0; border-color: var(--border-color);">
+                        <h3>My Badges</h3>
+                        <div class="badges-grid">
+                            <span class="badge" title="First Quiz Completed">🎓</span>
+                            <span class="badge" title="Recycling Rookie">♻️</span>
+                            <span class="badge" title="Energy Saver">💡</span>
+                        </div>
+                    </div>
+                </aside>
+                <section>
+                    <h2>Available Tasks</h2>
+                    <div class="tasks-grid">
+                        <a href="#" class="card task-card">
+                            <div>
+                                <span class="task-type-badge task-type-quiz">Quiz</span>
+                                <h3>Water Conservation Quiz</h3>
+                                <p>Test your knowledge on how to save our most precious resource.</p>
+                            </div>
+                            <div class="task-card-points">50 Points</div>
+                        </a>
+                        <a href="#" class="card task-card">
+                            <div>
+                                <span class="task-type-badge task-type-photo_upload">Photo Upload</span>
+                                <h3>Recycling Bin Challenge</h3>
+                                <p>Show us your organized recycling bin. Let's see those sorted plastics and papers!</p>
+                            </div>
+                            <div class="task-card-points">75 Points</div>
+                        </a>
+                        <a href="#" class="card task-card">
+                            <div>
+                                <span class="task-type-badge task-type-secret_code">Secret Code</span>
+                                <h3>Campus Eco-Code Hunt</h3>
+                                <p>Find the secret code hidden near the campus library's water fountain.</p>
+                            </div>
+                            <div class="task-card-points">100 Points</div>
+                        </a>
+                    </div>
+                </section>
+            </div>
         </div>
+
         <div id="history-container" class="card" style="margin-top: 2rem;">
             <h2>My Submission History</h2>
             <div id="history-content">
-                <div class="spinner"></div>
+                <table class="list-table">
+                    <thead>
+                        <tr>
+                            <th>Task Name</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Renewable Energy Quiz</td>
+                            <td><span class="status-badge status-approved">Approved</span></td>
+                            <td>2025-09-19</td>
+                            <td>+50</td>
+                        </tr>
+                        <tr>
+                            <td>Composting Photo Upload</td>
+                            <td><span class="status-badge status-pending">Pending</span></td>
+                            <td>2025-09-20</td>
+                            <td>+75</td>
+                        </tr>
+                        <tr>
+                            <td>Local Cleanup Event</td>
+                            <td><span class="status-badge status-rejected">Rejected</span></td>
+                            <td>2025-09-18</td>
+                            <td>0</td>
+                        </tr>
+                        <tr>
+                            <td>First Secret Code</td>
+                            <td><span class="status-badge status-approved">Approved</span></td>
+                            <td>2025-09-15</td>
+                            <td>+100</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </main>
     <div id="notification-container"></div>
-    <script src="components/notifications.js"></script>
-    <script src="components/navbar.js"></script>
-    <script src="script.js"></script>
 </body>
-
 </html>
