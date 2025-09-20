@@ -123,6 +123,16 @@ def get_student_profile(student_id: uuid.UUID, db: Session = Depends(get_db)):
 @app.get("/api/student/{student_id}/submissions", response_model=List[SubmissionHistoryResponse], tags=["Student"])
 def get_student_submission_history(student_id: uuid.UUID, db: Session = Depends(get_db)):
     return crud.get_submissions_by_student(db, student_id=student_id)
+    response = []
+    for s in submissions:
+        response.append(
+            SubmissionHistoryResponse(
+                task_title=s.task.title, # Correctly access the nested task title
+                status=s.status,
+                submitted_at=s.submitted_at
+            )
+        )
+    return response
 
 # Task Submission Routes
 @app.post("/api/student/{student_id}/submit/photo/{task_id}", tags=["Submissions"])
