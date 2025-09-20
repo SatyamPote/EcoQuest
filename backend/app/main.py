@@ -254,3 +254,14 @@ def create_full_quiz(quiz_data: QuizCreate, db: Session = Depends(get_db)):
     # This calls a new function in crud.py that handles the complex transaction
     new_quiz = crud.create_quiz_with_questions(db=db, quiz_data=quiz_data)
     return new_quiz
+
+# --- ADD THIS CODE BLOCK ---
+
+@app.get("/")
+def read_root():
+    """
+    A simple health check endpoint to confirm the API is running.
+    """
+    return {"status": "ok", "message": "Welcome to the EcoQuest API!"}
+
+# --- END OF CODE BLOCK ---
